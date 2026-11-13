@@ -40,7 +40,15 @@ SharePoint Administrator for step 5) in Aleida's tenant.
 
 ## 4. Find the site, library and client root folder
 
-You need three IDs. The grant script in step 5 prints the first two for you.
+**Easiest: do this after step 5, in the portal.** Sign in to the admin area, open
+**Files → Connect SharePoint** (`/admin/sharepoint`), pick the site, library and the folder
+that holds the client folders (or paste its SharePoint link), and choose **Use this folder**.
+The portal looks everything up with its own app (no one's Microsoft account) and saves it; no
+Vercel change or redeploy is needed. If the page says the app has no access, step 5 is not
+done yet. The database needs `supabase/update-2026-11-14.sql` run once first.
+
+Manual alternative: set three IDs in Vercel (these take precedence over the portal setting).
+The grant script in step 5 prints the first two for you.
 
 - `SP_SITE_ID`: the site that holds client folders, e.g. `quailhollowaccounting.sharepoint.com:/sites/Clients`.
   Graph form: `GET https://graph.microsoft.com/v1.0/sites/{hostname}:/sites/{site-path}`.

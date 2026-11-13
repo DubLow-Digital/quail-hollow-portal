@@ -28,6 +28,12 @@ _Last updated: November 13, 2026_
 
 ## Added after Phase 1 (at Todd's request, Nov 13)
 
+- **Connect SharePoint** (`/admin/sharepoint`): pick the client-folders folder inside the
+  portal; it is looked up and used with the portal's own Entra app only (no one's Microsoft
+  account). Shows what the app can reach, or the one-time site grant if it can reach nothing.
+- **Database update to run once:** `supabase/update-2026-11-14.sql` (Notion/Lead Alchemist
+  link columns and the settings table). Safe to run twice.
+
 - **Admin file browser** (`/admin/files`, plus "Browse files" on each client): every client
   folder and file, live from SharePoint, with breadcrumbs, search, "From portal" badges,
   downloads (audited; straight from SharePoint) and "Open in SharePoint". Until SharePoint is
