@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { buildContentSecurityPolicy, generateNonce } from '@/lib/security/csp';
+import { graphMockOrigin } from '@/lib/graph/mock';
 import {
   ADMIN_ABSOLUTE_MS,
   ADMIN_SESSION_COOKIE,
@@ -32,6 +33,7 @@ export async function proxy(request: NextRequest) {
     nonce,
     isDev: process.env.NODE_ENV === 'development',
     sharePointHost: process.env.SP_HOSTNAME,
+    testUploadOrigin: graphMockOrigin(),
   });
 
   const makeNext = () => {

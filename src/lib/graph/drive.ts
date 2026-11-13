@@ -2,6 +2,7 @@ import 'server-only';
 import { graphEnv } from '@/lib/env';
 import { sanitizeFolderSegment } from '@/lib/naming/folders';
 import { GraphError, graphRequest } from './client';
+import { graphMockOrigin } from './mock';
 
 /**
  * SharePoint document library operations, always scoped to the single configured drive
@@ -173,6 +174,8 @@ export async function createUploadSession(
 /** The browser may only be sent to the tenant's SharePoint host (it is also the CSP allowance). */
 export function assertUploadHost(uploadUrl: string): void {
   const url = new URL(uploadUrl);
+  const mock = graphMockOrigin();
+  if (mock && url.origin === mock) return;
   const expected = graphEnv().SP_HOSTNAME?.toLowerCase();
   const host = url.hostname.toLowerCase();
   const ok =

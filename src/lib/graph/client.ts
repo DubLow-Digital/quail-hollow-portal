@@ -2,6 +2,7 @@ import 'server-only';
 import { ConfidentialClientApplication } from '@azure/msal-node';
 import { graphEnv } from '@/lib/env';
 import { log } from '@/lib/log';
+import { graphMockOrigin } from './mock';
 
 /**
  * Microsoft Graph access for the "Quail Hollow Client Portal" Entra app.
@@ -12,6 +13,12 @@ import { log } from '@/lib/log';
  */
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
+
+/** Graph's base URL, or the local stand-in during end-to-end tests (see ./mock.ts). */
+function graphBase(): string {
+  const mock = graphMockOrigin();
+  return mock ? `${mock}/v1.0` : GRAPH;
+}
 const SCOPES = ['https://graph.microsoft.com/.default'];
 
 let msal: ConfidentialClientApplication | null = null;
@@ -34,6 +41,7 @@ function app(): ConfidentialClientApplication {
 }
 
 export async function graphToken(): Promise<string> {
+  if (graphMockOrigin()) return 'e2e-mock-token';
   const result = await app().acquireTokenByClientCredential({ scopes: SCOPES });
   if (!result?.accessToken)
     throw new GraphError(401, 'token_unavailable', 'Could not acquire a Graph token');
@@ -63,8 +71,9 @@ const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
 /** Calls Graph with retries on throttling and transient errors. Never logs URLs or bodies. */
 export async function graphRequest<T>(path: string, opts: GraphRequest = {}): Promise<T | null> {
-  const url = path.startsWith('https://') ? path : `${GRAPH}${path}`;
-  if (!url.startsWith(`${GRAPH}/`)) throw new Error('Refusing to call a non-Graph URL');
+  const base = graphBase();
+  const url = /^https?:\/\//.test(path) ? path : `${base}${path}`;
+  if (!url.startsWith(`${base}/`)) throw new Error('Refusing to call a non-Graph URL');
 
   for (let attempt = 1; ; attempt++) {
     const token = await graphToken();

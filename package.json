@@ -21,7 +21,8 @@
     "test:e2e": "playwright test --trace off",
     "graph:grant": "tsx --env-file-if-exists=.env.local scripts/grant-site-permission.ts",
     "graph:check": "tsx --env-file-if-exists=.env.local scripts/check-graph-access.ts",
-    "db:bundle": "node scripts/bundle-migrations.mjs"
+    "db:bundle": "node scripts/bundle-migrations.mjs",
+    "test:e2e:full": "playwright test --config playwright.full.config.ts --trace off"
   },
   "dependencies": {
     "@azure/msal-node": "7.1.2",

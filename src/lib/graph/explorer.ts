@@ -10,6 +10,7 @@ import {
   type FileSource,
 } from '@/lib/files/explorer-types';
 import { GraphError, graphRequest } from './client';
+import { graphMockOrigin } from './mock';
 
 /**
  * Read-only file browsing for admins, confined to the client folders area
@@ -179,7 +180,9 @@ export const sharePointSource: FileSource = {
     await trailToRoot(item, false);
     const url = item['@microsoft.graph.downloadUrl'];
     if (!url) return null;
-    if (!isSharePointDownloadUrl(url, graphEnv().SP_HOSTNAME)) {
+    const mock = graphMockOrigin();
+    const fromMock = mock !== null && url.startsWith(`${mock}/`);
+    if (!fromMock && !isSharePointDownloadUrl(url, graphEnv().SP_HOSTNAME)) {
       throw new GraphError(502, 'unexpected_download_host', 'Download link host is not SharePoint');
     }
     return url;
