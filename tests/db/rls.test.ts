@@ -246,6 +246,7 @@ describe('admin-only tables', () => {
   for (const table of [
     'admins',
     'audit_log',
+    'portal_settings',
     'rate_limits',
     'request_bundles',
     'request_bundle_items',
@@ -274,6 +275,7 @@ describe('anonymous access', () => {
     'uploads',
     'admins',
     'audit_log',
+    'portal_settings',
     'rate_limits',
     'request_bundles',
     'request_bundle_items',

@@ -41,6 +41,38 @@ afterAll(() => {
   delete process.env.E2E_GRAPH_MOCK_URL;
 });
 
+describe('Connect SharePoint (app-only discovery)', () => {
+  it('lists the granted site, its library and folders, and resolves a pasted link', async () => {
+    const { reachableSites, listLibraries, browseFolder, resolveLink, checkAppSignIn } =
+      await import('@/lib/graph/discover');
+    expect(await checkAppSignIn()).toEqual({ ok: true });
+    const sites = await reachableSites();
+    expect(sites.map((s) => s.name)).toEqual(['Quail Hollow Clients']);
+    expect(sites[0]!.hostname).toBe('example.sharepoint.com');
+    const libraries = await listLibraries(sites[0]!.id);
+    expect(libraries.map((l) => l.name)).toEqual(['Documents']);
+    const top = await browseFolder(libraries[0]!.id, null);
+    expect(top.children.map((c) => c.name)).toContain('Clients');
+
+    const viaAddressBar = await resolveLink(
+      'https://example.sharepoint.com/sites/qh/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Fqh%2FShared%20Documents%2FClients',
+    );
+    expect(viaAddressBar.folder.id).toBe('E2EROOT');
+    expect(viaAddressBar.library.name).toBe('Documents');
+    const direct = await resolveLink(
+      'https://example.sharepoint.com/sites/qh/Shared Documents/Clients',
+    );
+    expect(direct.folder.id).toBe('E2EROOT');
+  });
+
+  it('says plainly when the app has no access to a site', async () => {
+    const { resolveLink } = await import('@/lib/graph/discover');
+    await expect(
+      resolveLink('https://example.sharepoint.com/sites/other/Shared%20Documents/Clients'),
+    ).rejects.toMatchObject({ reason: 'no_access' });
+  });
+});
+
 describe('Graph stand-in', () => {
   it('supports the folder, upload, verification and browsing calls the portal makes', async () => {
     const { createStandardClientFolder } = await import('@/lib/graph/client-folders');

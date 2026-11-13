@@ -8,6 +8,7 @@ import { metaFromHeaders } from '@/lib/request-meta';
 import { audit } from '@/lib/audit';
 import { log } from '@/lib/log';
 import { graphEnv } from '@/lib/env';
+import { ensureSharePointLocation } from '@/lib/graph/location';
 import { MAX_PAGE_COUNT, canonicalExtension, checkFileAgainstRules } from '@/lib/files/types';
 import { NamingTemplateError, buildFilename } from '@/lib/naming/filename';
 import { FolderPathError, resolveSubfolder } from '@/lib/naming/folders';
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return fail(403, 'forbidden');
   const ctx = await getClient();
   if (!ctx) return fail(401, 'unauthorized');
+  await ensureSharePointLocation();
 
   let input: z.infer<typeof bodySchema>;
   try {

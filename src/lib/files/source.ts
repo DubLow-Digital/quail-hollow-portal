@@ -1,6 +1,7 @@
 import 'server-only';
 import { graphEnv } from '@/lib/env';
 import { sharePointSource } from '@/lib/graph/explorer';
+import { ensureSharePointLocation } from '@/lib/graph/location';
 import type { FileSource } from './explorer-types';
 import { sampleSource } from './sample-tree';
 
@@ -15,11 +16,13 @@ export function sharePointConfigured(): boolean {
 }
 
 /**
- * The admin file browser reads SharePoint when it is configured. Until then, setting
+ * The admin file browser reads SharePoint (through the portal's own Entra app) once a
+ * location is set, in Vercel or on the Connect SharePoint page. Until then, setting
  * FILES_DEMO=true shows a clearly labeled sample tree so the screen can be previewed.
  * Real SharePoint always wins, so a forgotten FILES_DEMO flag can never hide real files.
  */
-export function fileSource(): FileSource | null {
+export async function fileSource(): Promise<FileSource | null> {
+  await ensureSharePointLocation();
   if (sharePointConfigured()) return sharePointSource;
   if (process.env.FILES_DEMO === 'true') return sampleSource;
   return null;

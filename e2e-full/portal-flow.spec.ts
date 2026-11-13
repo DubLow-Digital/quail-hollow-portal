@@ -265,6 +265,29 @@ test('Aleida accepts the license, browses the files and sees the audit trail', a
   await expect(admin.getByText('upload.completed').first()).toBeVisible();
 });
 
+test('Connect SharePoint shows what the portal app can reach and saves the folder', async () => {
+  await admin.goto('/admin/sharepoint');
+  await expect(admin.getByText('Working')).toBeVisible();
+  await admin.getByRole('link', { name: /Quail Hollow Clients/ }).click();
+  await admin.getByRole('link', { name: /Documents/ }).click();
+  await admin.getByRole('link', { name: /^Clients/ }).click();
+  await expect(admin.getByText('Test, Todd').first()).toBeVisible();
+  admin.once('dialog', (d) => void d.accept());
+  await admin.getByRole('button', { name: 'Use this folder for client folders' }).click();
+  await admin.waitForURL(/\/admin\/files\?connected=1/);
+  await expect(admin.getByText('SharePoint connected')).toBeVisible();
+  await expect(admin.getByRole('link', { name: 'Test, Todd' })).toBeVisible();
+
+  const saved = await adminRest<{ key: string; value: string }[]>(
+    'portal_settings?select=key,value',
+  );
+  expect(saved.find((r) => r.key === 'sp_root_folder_id')?.value).toBe('E2EROOT');
+  const audit = await adminRest<{ action: string }[]>(
+    'audit_log?select=action&action=eq.settings.sharepoint_connected',
+  );
+  expect(audit.length).toBeGreaterThan(0);
+});
+
 test('no file bytes, sign-in codes or upload links are stored', async () => {
   const tables = ['audit_log', 'uploads', 'document_requests', 'clients'];
   const dump = JSON.stringify(

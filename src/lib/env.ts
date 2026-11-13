@@ -63,6 +63,13 @@ const supabaseSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: nonEmpty,
 });
 
+/** The portal's own Entra app (app-only access; no user's Microsoft account is involved). */
+const graphCredentialsSchema = z.object({
+  MS_TENANT_ID: nonEmpty,
+  MS_PORTAL_CLIENT_ID: nonEmpty,
+  MS_PORTAL_CLIENT_SECRET: nonEmpty,
+});
+
 const graphSchema = z.object({
   MS_TENANT_ID: nonEmpty,
   MS_PORTAL_CLIENT_ID: nonEmpty,
@@ -117,6 +124,7 @@ type AppEnv = z.infer<typeof appSchema>;
 type SyncEnv = z.infer<typeof syncSchema>;
 type SupabaseEnv = z.infer<typeof supabaseSchema>;
 type GraphEnv = z.infer<typeof graphSchema>;
+type GraphCredentialsEnv = z.infer<typeof graphCredentialsSchema>;
 type AdminAuthEnv = z.infer<typeof adminAuthSchema>;
 type EmailEnv = z.infer<typeof emailSchema>;
 type AllowlistEnv = z.infer<typeof allowlistSchema>;
@@ -133,6 +141,13 @@ export const supabaseEnv = (): SupabaseEnv =>
   cached('supabase', () => parseGroup('Supabase', supabaseSchema));
 export const graphEnv = (): GraphEnv =>
   cached('graph', () => parseGroup('Microsoft Graph', graphSchema));
+export const graphCredentialsEnv = (): GraphCredentialsEnv =>
+  cached('graphCredentials', () => parseGroup('Microsoft Graph app', graphCredentialsSchema));
+
+/** Forget the cached SharePoint location after it changes (see lib/graph/location.ts). */
+export function forgetGraphLocation(): void {
+  cache.delete('graph');
+}
 export const adminAuthEnv = (): AdminAuthEnv =>
   cached('adminAuth', () => parseGroup('admin sign-in', adminAuthSchema));
 export const emailEnv = (): EmailEnv => cached('email', () => parseGroup('email', emailSchema));

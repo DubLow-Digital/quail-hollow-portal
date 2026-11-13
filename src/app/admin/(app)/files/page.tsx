@@ -18,7 +18,7 @@ import { Alert, Badge, Card, EmptyState, Input, PageHeader, buttonClass } from '
 
 export const metadata = { title: 'Files' };
 
-type Params = { folder?: string; q?: string };
+type Params = { folder?: string; q?: string; connected?: string };
 
 function FolderIcon() {
   return (
@@ -69,15 +69,17 @@ function describeError(err: unknown): string {
 export default async function FilesPage({ searchParams }: { searchParams: Promise<Params> }) {
   await requireAdmin();
   const params = await searchParams;
-  const source = fileSource();
+  const source = await fileSource();
 
   if (!source) {
     return (
       <div>
         <PageHeader title="Files" description="Browse every client folder and file." />
         <EmptyState title="SharePoint is not connected yet">
-          The file browser appears here once the SharePoint settings are added. To preview it with
-          sample folders first, set FILES_DEMO=true.
+          <p>Choose the folder that holds your client folders and they appear here.</p>
+          <Link href="/admin/sharepoint" className={`${buttonClass('primary', 'sm')} mt-3`}>
+            Connect SharePoint
+          </Link>
         </EmptyState>
       </div>
     );
@@ -143,23 +145,39 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
           </span>
         }
         actions={
-          folder?.webUrl ? (
-            <a
-              href={folder.webUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={buttonClass('secondary', 'sm')}
+          <>
+            {folder?.webUrl ? (
+              <a
+                href={folder.webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass('secondary', 'sm')}
+              >
+                Open in SharePoint ↗
+              </a>
+            ) : null}
+            <Link
+              href="/admin/sharepoint"
+              className={buttonClass(sample ? 'primary' : 'ghost', 'sm')}
             >
-              Open in SharePoint ↗
-            </a>
-          ) : null
+              {sample ? 'Connect SharePoint' : 'SharePoint settings'}
+            </Link>
+          </>
         }
       />
 
+      {params.connected && !sample ? (
+        <Alert tone="success" title="SharePoint connected">
+          These are the real client folders, read with the portal’s own app.
+        </Alert>
+      ) : null}
       {sample ? (
         <Alert tone="warning" title="Preview with sample folders">
           SharePoint is not connected yet, so these folders and files are made up. Nothing here is
-          real and nothing can be downloaded.
+          real and nothing can be downloaded.{' '}
+          <Link href="/admin/sharepoint" className="font-medium underline">
+            Connect SharePoint
+          </Link>
         </Alert>
       ) : null}
 

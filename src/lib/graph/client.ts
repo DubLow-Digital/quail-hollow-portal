@@ -1,6 +1,6 @@
 import 'server-only';
 import { ConfidentialClientApplication } from '@azure/msal-node';
-import { graphEnv } from '@/lib/env';
+import { graphCredentialsEnv } from '@/lib/env';
 import { log } from '@/lib/log';
 import { graphMockOrigin } from './mock';
 
@@ -25,7 +25,7 @@ let msal: ConfidentialClientApplication | null = null;
 
 function app(): ConfidentialClientApplication {
   if (!msal) {
-    const env = graphEnv();
+    const env = graphCredentialsEnv();
     msal = new ConfidentialClientApplication({
       auth: {
         clientId: env.MS_PORTAL_CLIENT_ID,

@@ -71,6 +71,8 @@ test.describe('route protection', () => {
     await expect(page).toHaveURL(/\/admin\/signin\?next=%2Fadmin%2Ffiles/);
     await page.goto('/admin/clients/import');
     await expect(page).toHaveURL(/\/admin\/signin\?next=%2Fadmin%2Fclients%2Fimport/);
+    await page.goto('/admin/sharepoint');
+    await expect(page).toHaveURL(/\/admin\/signin\?next=%2Fadmin%2Fsharepoint/);
   });
 
   test('client and admin APIs refuse requests without a session', async ({ request }) => {

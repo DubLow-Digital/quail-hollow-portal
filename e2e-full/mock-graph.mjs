@@ -31,7 +31,17 @@ function add(item) {
   items.set(item.id, item);
   return item;
 }
-add({ id: 'LIBRARY', name: 'Documents', folder: true, parent: null, createdAt: now() });
+// Graph calls a library's top-level folder "root".
+add({ id: 'LIBRARY', name: 'root', folder: true, parent: null, createdAt: now() });
+// The one site the portal app has been granted (Sites.Selected); the tenant root is not.
+const SITE = {
+  id: 'example.sharepoint.com,11111111-aaaa-4aaa-8aaa-111111111111,22222222-bbbb-4bbb-8bbb-222222222222',
+  displayName: 'Quail Hollow Clients',
+  name: 'qh',
+  webUrl: 'https://example.sharepoint.com/sites/qh',
+  siteCollection: { hostname: 'example.sharepoint.com' },
+};
+const LIBRARY_WEB = 'https://example.sharepoint.com/sites/qh/Shared%20Documents';
 add({ id: ROOT, name: 'Clients', folder: true, parent: 'LIBRARY', createdAt: now() });
 
 const children = (id) => [...items.values()].filter((i) => i.parent === id);
@@ -163,6 +173,33 @@ const server = createServer(async (req, res) => {
     if (!path.startsWith('/v1.0/')) return graphError(res, 404, 'notFound');
     if (req.headers.authorization !== TOKEN)
       return graphError(res, 401, 'InvalidAuthenticationToken');
+    const decoded = decodeURIComponent(path);
+    if (decoded === '/v1.0/sites') return send(res, 200, { value: [SITE] });
+    if (decoded === '/v1.0/sites/root') return graphError(res, 403, 'accessDenied');
+    if (
+      decoded === '/v1.0/sites/example.sharepoint.com:/sites/qh' ||
+      decoded === `/v1.0/sites/${SITE.id}`
+    )
+      return send(res, 200, SITE);
+    if (decoded.startsWith('/v1.0/sites/example.sharepoint.com:/sites/'))
+      return graphError(res, 403, 'accessDenied');
+    if (decoded === `/v1.0/sites/${SITE.id}/drives`) {
+      return send(res, 200, {
+        value: [
+          { id: DRIVE, name: 'Documents', webUrl: LIBRARY_WEB, driveType: 'documentLibrary' },
+        ],
+      });
+    }
+    const rootRef = /^\/v1\.0\/drives\/([^/]+)\/root(?::\/(.+):)?$/.exec(path);
+    if (rootRef && req.method === 'GET') {
+      if (decodeURIComponent(rootRef[1]) !== DRIVE) return graphError(res, 403, 'accessDenied');
+      let cur = items.get('LIBRARY');
+      for (const seg of (rootRef[2] ?? '').split('/').filter(Boolean).map(decodeURIComponent)) {
+        cur = cur && cur.folder ? childByName(cur.id, seg) : null;
+        if (!cur) return graphError(res, 404, 'itemNotFound');
+      }
+      return send(res, 200, json(cur));
+    }
     const m = /^\/v1\.0\/drives\/([^/]+)\/items\/([^/:]+)(.*)$/.exec(path);
     if (!m) return graphError(res, 404, 'notFound');
     if (decodeURIComponent(m[1]) !== DRIVE) return graphError(res, 403, 'accessDenied');

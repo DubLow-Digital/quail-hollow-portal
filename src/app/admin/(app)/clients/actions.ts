@@ -16,6 +16,7 @@ import {
 import { GraphError } from '@/lib/graph/client';
 import { FolderPathError } from '@/lib/naming/folders';
 import { graphEnv } from '@/lib/env';
+import { ensureSharePointLocation } from '@/lib/graph/location';
 import { requestMeta } from '@/lib/request-meta';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { log } from '@/lib/log';
@@ -195,6 +196,7 @@ const DRIVE_ITEM_ID = /^[A-Za-z0-9!_.-]{1,200}$/;
 
 export async function linkFolderAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
+  await ensureSharePointLocation();
   const clientId = str(form, 'client_id');
   const folderId = str(form, 'folder_id');
   if (!UUID_RE.test(clientId) || !DRIVE_ITEM_ID.test(folderId)) {
@@ -242,6 +244,7 @@ export async function linkFolderAction(_prev: ActionState, form: FormData): Prom
 
 export async function createFolderAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
+  await ensureSharePointLocation();
   const clientId = str(form, 'client_id');
   if (!UUID_RE.test(clientId)) return { ok: false, message: 'Unknown client.' };
   const db = serviceSupabase();

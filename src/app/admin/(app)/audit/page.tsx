@@ -19,6 +19,7 @@ const ACTION_GROUPS = [
   { value: 'email.', label: 'Emails' },
   { value: 'file.', label: 'File downloads' },
   { value: 'sync.', label: 'Notion and Lead Alchemist sync' },
+  { value: 'settings.', label: 'Settings' },
 ];
 
 type SearchParams = {

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   if (!DRIVE_ITEM_ID.test(id)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
-  const source = fileSource();
+  const source = await fileSource();
   if (!source) return NextResponse.json({ error: 'not_configured' }, { status: 503 });
 
   let url: string | null;

@@ -7,6 +7,7 @@ import { metaFromHeaders } from '@/lib/request-meta';
 import { audit } from '@/lib/audit';
 import { log } from '@/lib/log';
 import { graphEnv } from '@/lib/env';
+import { ensureSharePointLocation } from '@/lib/graph/location';
 import { deleteItem, getChildByPath, getItem, type DriveItem } from '@/lib/graph/drive';
 import { verifyUploadedItem } from '@/lib/uploads/verify';
 import { notifyNewUpload } from '@/lib/requests/notify';
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return fail(403, 'forbidden');
   const ctx = await getClient();
   if (!ctx) return fail(401, 'unauthorized');
+  await ensureSharePointLocation();
 
   let input: z.infer<typeof bodySchema>;
   try {

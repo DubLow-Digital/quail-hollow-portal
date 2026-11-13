@@ -46,7 +46,8 @@ export type AuditAction =
   | 'sync.push_failed'
   | 'sync.received'
   | 'sync.rejected'
-  | 'client.imported';
+  | 'client.imported'
+  | 'settings.sharepoint_connected';
 
 export type AuditTarget = 'client' | 'admin' | 'request' | 'upload' | 'document_type' | 'bundle';
 

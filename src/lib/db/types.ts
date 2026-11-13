@@ -266,6 +266,12 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['rate_limits']['Insert']>;
         Relationships: [];
       };
+      portal_settings: {
+        Row: { key: string; value: string; updated_by: string | null; updated_at: string };
+        Insert: { key: string; value: string; updated_by?: string | null; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['portal_settings']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {

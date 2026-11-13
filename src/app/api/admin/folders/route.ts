@@ -3,6 +3,7 @@ import { getAdmin } from '@/lib/auth/admin';
 import { graphEnv } from '@/lib/env';
 import { listChildFolders } from '@/lib/graph/drive';
 import { GraphError } from '@/lib/graph/client';
+import { ensureSharePointLocation } from '@/lib/graph/location';
 
 const DRIVE_ITEM_ID = /^[A-Za-z0-9!_.-]{1,200}$/;
 
@@ -10,6 +11,7 @@ const DRIVE_ITEM_ID = /^[A-Za-z0-9!_.-]{1,200}$/;
 export async function GET(request: NextRequest) {
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  await ensureSharePointLocation();
 
   const parent = request.nextUrl.searchParams.get('parent') ?? graphEnv().SP_CLIENT_ROOT_FOLDER_ID;
   if (!DRIVE_ITEM_ID.test(parent))
