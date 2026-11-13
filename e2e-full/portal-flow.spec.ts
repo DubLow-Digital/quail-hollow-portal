@@ -267,11 +267,18 @@ test('Aleida accepts the license, browses the files and sees the audit trail', a
 
 test('Connect SharePoint shows what the portal app can reach and saves the folder', async () => {
   await admin.goto('/admin/sharepoint');
-  await expect(admin.getByText('Working')).toBeVisible();
-  await admin.getByRole('link', { name: /Quail Hollow Clients/ }).click();
-  await admin.getByRole('link', { name: /Documents/ }).click();
-  await admin.getByRole('link', { name: /^Clients/ }).click();
-  await expect(admin.getByText('Test, Todd').first()).toBeVisible();
+  // Scope to the page content: the admin menu also has a "Clients" link.
+  const main = admin.getByRole('main');
+  await expect(main.getByText('Working')).toBeVisible();
+  await main.getByRole('link', { name: /Quail Hollow Clients/ }).click();
+  await expect(main.getByRole('heading', { name: '2. Choose the document library' })).toBeVisible();
+  await main.getByRole('link', { name: /Documents/ }).click();
+  await expect(
+    main.getByRole('heading', { name: '3. Choose the client folders folder' }),
+  ).toBeVisible();
+  await main.getByRole('link', { name: /^Clients/ }).click();
+  await admin.waitForURL(/folder=E2EROOT/);
+  await expect(main.getByRole('link', { name: /^Test, Todd/ })).toBeVisible();
   admin.once('dialog', (d) => void d.accept());
   await admin.getByRole('button', { name: 'Use this folder for client folders' }).click();
   await admin.waitForURL(/\/admin\/files\?connected=1/);
