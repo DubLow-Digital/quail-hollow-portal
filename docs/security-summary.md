@@ -145,5 +145,10 @@ WISP and review them annually.
 - 28 browser tests on phone-sized screens (security headers, CSP, route protection, CSRF
   checks, sign-in form).
 - Lighthouse mobile: performance 99, accessibility 100 on the sign-in pages.
-- Still to do with real services: an end-to-end test on a Vercel preview with a test client and
-  fake documents (milestone 10).
+- A full end-to-end test on every change, against real Supabase sign-in and database security
+  and a stand-in for SharePoint: emailed-code sign-in for staff and clients, photo, three-page
+  scan and 40 MB uploads, isolation between clients (including direct database calls with a
+  client's own login), accept, file browsing and the audit log, and a check that no upload links
+  or sign-in codes are stored.
+- Still to do with Microsoft: the first real upload to Quail Hollow's SharePoint once the Entra
+  app is set up (milestone 10).

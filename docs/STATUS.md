@@ -63,14 +63,29 @@ Remaining:
 4. Resend: verify the sending domain (DNS change).
 5. Todd tests on iPhone and Android with the fake "Todd Test" client (docs/deploy.md step 5).
 
-## Not yet verified (needs real services)
+## Full end-to-end test (passing in CI)
 
-- **Full end-to-end flow with real Supabase Auth and PostgREST.** The build sandbox could not
-  run them (container images blocked; running downloaded release binaries was not approved).
-  Every piece is tested separately; the preview test in milestone 10 covers the whole path.
-- **Browser upload straight to SharePoint (CORS).** Graph upload-session URLs accept
-  cross-origin PUTs from browsers; confirm on the first preview upload.
-- Graph behavior against the real tenant (folder creation, rename on conflict, item lookup).
+CI job "Full end-to-end" runs the production build against real Supabase Auth, PostgREST and
+Postgres (`supabase start`, all migrations) and a local SharePoint stand-in, on a phone viewport.
+All 8 steps pass (Nov 13):
+
+1. Aleida signs in with an emailed code, adds two clients, creates their folders and requests.
+2. The client signs in on a phone with an emailed code and sees exactly their own requests.
+3. A photo of a fake license arrives as `TTest_DriversLicense_<date>.jpg` in `Individual/ID`.
+4. A three-page scan arrives as one 3-page PDF.
+5. A 40 MB PDF uploads in 5 MiB chunks; the second file is renamed with " 1".
+6. A client cannot open, upload to or query another client's request (page, upload API and
+   direct database API with their own token); admin-only columns and the audit log are refused.
+7. Aleida accepts, browses the files ("From portal" badge, audited download) and the audit log
+   shows every sign-in, upload and admin action.
+8. No upload links or sign-in codes are stored in any table.
+
+The run found and fixed one real bug: after a correct code, the client could bounce back to the
+sign-in page (a client-side transition reused a cached redirect). Sign-in now does a full page
+load, and rejected sessions are logged with a reason code.
+
+Still to confirm with Microsoft once the Entra app exists: browser uploads straight to the real
+SharePoint upload URL (CORS) and Graph behavior in Aleida's tenant (`npm run graph:check`).
 
 ## Open questions for Todd
 
