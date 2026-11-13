@@ -26,6 +26,7 @@ export const LIMITS = {
   adminCodeVerifyPerEmail: { bucket: 'admin_code_verify_email', max: 5, windowSeconds: 15 * 60 },
   adminCodeVerifyPerIp: { bucket: 'admin_code_verify_ip', max: 20, windowSeconds: 15 * 60 },
   uploadStartPerClient: { bucket: 'upload_start_client', max: 60, windowSeconds: 60 * 60 },
+  syncInboundPerIp: { bucket: 'sync_inbound_ip', max: 300, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, Limit>;
 
 export async function hitLimit(limit: Limit, identifier: string): Promise<boolean> {

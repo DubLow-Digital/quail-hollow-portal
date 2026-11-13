@@ -67,12 +67,21 @@ test.describe('route protection', () => {
   test('admin pages redirect to admin sign in', async ({ page }) => {
     await page.goto('/admin/clients');
     await expect(page).toHaveURL(/\/admin\/signin\?next=%2Fadmin%2Fclients/);
+    await page.goto('/admin/files');
+    await expect(page).toHaveURL(/\/admin\/signin\?next=%2Fadmin%2Ffiles/);
+    await page.goto('/admin/clients/import');
+    await expect(page).toHaveURL(/\/admin\/signin\?next=%2Fadmin%2Fclients%2Fimport/);
   });
 
   test('client and admin APIs refuse requests without a session', async ({ request }) => {
     expect((await request.post('/api/uploads/start', { data: {} })).status()).toBe(401);
     expect((await request.post('/api/uploads/complete', { data: {} })).status()).toBe(401);
     expect((await request.get('/api/admin/folders')).status()).toBe(401);
+    expect((await request.get('/api/admin/files/01ABCDEF/download')).status()).toBe(401);
+  });
+
+  test('the sync endpoint is off until the sync service is configured', async ({ request }) => {
+    expect((await request.post('/api/sync/clients', { data: {} })).status()).toBe(404);
   });
 
   test('forged session cookies are rejected', async ({ request, baseURL }) => {

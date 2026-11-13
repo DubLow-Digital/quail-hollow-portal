@@ -120,6 +120,15 @@ describe('clients', () => {
     expect(code2).toBe('42501');
   });
 
+  it('a client cannot read Notion or Lead Alchemist links or sync state', async () => {
+    for (const column of ['notion_page_id', 'ghl_contact_id', 'sync_state', 'sync_error']) {
+      const code = await asRole(client, 'authenticated', USER_A, (q) =>
+        errorCode(q, `select ${column} from clients`),
+      );
+      expect(code).toBe('42501');
+    }
+  });
+
   it('an archived client sees nothing', async () => {
     const result = await asRole(client, 'authenticated', USER_ARCHIVED, async (q) => ({
       clients: (await q('select id from clients')).rows,

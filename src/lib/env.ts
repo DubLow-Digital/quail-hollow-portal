@@ -99,7 +99,22 @@ const emailSchema = z.object({
   ADMIN_ALLOWLIST: emailList,
 });
 
+/** quail-hollow-sync, which owns the Notion and Lead Alchemist connections. Optional. */
+const syncSchema = z.object({
+  SYNC_HUB_URL: z
+    .url()
+    .refine(
+      (v) => /^https:\/\//.test(v) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(v),
+      {
+        message: 'SYNC_HUB_URL must use https',
+      },
+    )
+    .transform((v) => v.replace(/\/+$/, '')),
+  SYNC_HUB_SECRET: z.string().min(32, 'SYNC_HUB_SECRET must be at least 32 characters'),
+});
+
 type AppEnv = z.infer<typeof appSchema>;
+type SyncEnv = z.infer<typeof syncSchema>;
 type SupabaseEnv = z.infer<typeof supabaseSchema>;
 type GraphEnv = z.infer<typeof graphSchema>;
 type AdminAuthEnv = z.infer<typeof adminAuthSchema>;
@@ -123,6 +138,17 @@ export const adminAuthEnv = (): AdminAuthEnv =>
 export const emailEnv = (): EmailEnv => cached('email', () => parseGroup('email', emailSchema));
 export const allowlistEnv = (): AllowlistEnv =>
   cached('allowlist', () => parseGroup('admin allowlist', allowlistSchema));
+export const syncEnv = (): SyncEnv => cached('sync', () => parseGroup('sync', syncSchema));
+
+/** True when the Notion / Lead Alchemist sync service is configured. */
+export function syncConfigured(): boolean {
+  try {
+    syncEnv();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Backup admin sign-in with an emailed code (for when Microsoft sign-in is unavailable).

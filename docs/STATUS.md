@@ -7,7 +7,7 @@ _Last updated: November 13, 2026_
 | #   | Milestone                                                                                                                        | State                              |
 | --- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | 1   | Scaffold: Next.js 16, Tailwind 4, Supabase clients, lint/format, security headers, `.env.example`, README, CI                    | Done                               |
-| 2   | Migrations, RLS on every table, column-level grants, seed data, RLS tests                                                        | Done, 33 DB tests                  |
+| 2   | Migrations, RLS on every table, column-level grants, seed data, RLS tests                                                        | Done, 34 DB tests                  |
 | 3   | Graph service (token cache, children, create folder, upload session, get item), Entra runbook, grant and check scripts           | Done, mocked tests                 |
 | 4   | Admin Microsoft sign-in with allowlist; client CRUD; folder browser; link or create folder                                       | Done                               |
 | 5   | Document type library, bundles, assigning requests, invite and "documents requested" email                                       | Done                               |
@@ -19,12 +19,24 @@ _Last updated: November 13, 2026_
 
 ### Test results (local)
 
-- `npm test`: 103 unit tests pass
-- `npm run test:db`: 33 RLS/database tests pass against Postgres 16
+- `npm test`: 129 unit tests pass
+- `npm run test:db`: 34 RLS/database tests pass against Postgres 16
 - `npm run test:e2e`: 28 browser smoke tests pass (iPhone and Android viewports)
 - Lighthouse mobile, `/login` and `/admin/signin`: performance 99, accessibility 100,
   best practices 96–100. SEO is intentionally low (the portal tells search engines not to index it).
 - Typecheck, lint and Prettier clean; production build succeeds
+
+## Added after Phase 1 (at Todd's request, Nov 13)
+
+- **Admin file browser** (`/admin/files`, plus "Browse files" on each client): every client
+  folder and file, live from SharePoint, with breadcrumbs, search, "From portal" badges,
+  downloads (audited; straight from SharePoint) and "Open in SharePoint". Until SharePoint is
+  connected, `FILES_DEMO=true` shows a labeled sample tree with fake clients.
+- **Notion and Lead Alchemist sync** through quail-hollow-sync (docs/sync.md; companion PR
+  DubLow-Digital/quail-hollow-sync#4). Portal clients are created or linked in both; Import
+  brings clients in from either; linked changes flow back. Previously out of scope for Phase 1.
+- New migration `20261114000001_external_links.sql` (run it in Supabase if the database was
+  set up from an earlier `setup-all.sql`).
 
 ## Milestone 10: deploy to a Vercel preview (in progress)
 
@@ -62,6 +74,11 @@ Remaining:
 
 ## Open questions for Todd
 
+0. **Sync setup:** Lead Alchemist token needs Edit Contacts; check "Contact Created" workflows
+   for the `client portal` tag; optional Notion properties Portal Client ID and Client Portal.
+   New Notion records from the portal get Lead Source "Client Portal" and Notion's default
+   Client Status. OK?
+
 1. **Portal domain:** `secure.quailhollowaccounting.com` (proposed) while `portal.` stays on SuiteDash?
 2. **SharePoint location:** which site and library hold client folders, and do existing client
    folders get linked as they are or re-created in the standard structure?
@@ -95,4 +112,5 @@ Remaining:
   the scan screen)
 - Scheduled cleanup of uploads abandoned in the browser (currently labeled "Did not finish")
 - Out of scope for Phase 1 per the brief: locked fillable forms (check roster), delivering
-  finished documents to clients, Notion sync, QuickBooks, Lead Alchemist sync, e-signature, payments
+  finished documents to clients, QuickBooks, e-signature, payments (Notion and Lead Alchemist
+  sync were added on Nov 13 at Todd's request)

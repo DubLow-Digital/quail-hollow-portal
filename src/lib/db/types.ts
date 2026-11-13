@@ -11,6 +11,7 @@ export type UploadStatus = 'pending' | 'complete' | 'failed';
 export type ActorType = 'client' | 'admin' | 'system';
 export type EntityType = 'individual' | 'schedule_c' | '1120s' | '1065' | 'other';
 export type CaptureMethod = 'photo' | 'scan' | 'file';
+export type SyncState = 'off' | 'pending' | 'ok' | 'error';
 
 type Rel<FK extends string, Col extends string, Ref extends string> = {
   foreignKeyName: FK;
@@ -59,6 +60,11 @@ export type Database = {
           auth_user_id: string | null;
           invited_at: string | null;
           last_login_at: string | null;
+          notion_page_id: string | null;
+          ghl_contact_id: string | null;
+          sync_state: SyncState;
+          sync_error: string | null;
+          synced_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -77,6 +83,11 @@ export type Database = {
           auth_user_id?: string | null;
           invited_at?: string | null;
           last_login_at?: string | null;
+          notion_page_id?: string | null;
+          ghl_contact_id?: string | null;
+          sync_state?: SyncState;
+          sync_error?: string | null;
+          synced_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

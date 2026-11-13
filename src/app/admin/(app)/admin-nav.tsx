@@ -7,6 +7,7 @@ import { cx } from '@/components/ui';
 const LINKS = [
   { href: '/admin', label: 'Dashboard', exact: true },
   { href: '/admin/clients', label: 'Clients' },
+  { href: '/admin/files', label: 'Files' },
   { href: '/admin/document-types', label: 'Document types' },
   { href: '/admin/bundles', label: 'Bundles' },
   { href: '/admin/audit', label: 'Audit log' },

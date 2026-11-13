@@ -56,7 +56,14 @@ export default async function ClientsPage({
       <PageHeader
         title="Clients"
         description="Everyone who can sign in to the portal."
-        actions={<LinkButton href="/admin/clients/new">Add client</LinkButton>}
+        actions={
+          <>
+            <LinkButton href="/admin/clients/import" variant="secondary">
+              Import
+            </LinkButton>
+            <LinkButton href="/admin/clients/new">Add client</LinkButton>
+          </>
+        }
       />
       <form className="mb-4 flex flex-col gap-2 sm:flex-row" role="search">
         <Input

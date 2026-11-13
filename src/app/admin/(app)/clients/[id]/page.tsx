@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/admin';
 import { serviceSupabase } from '@/lib/supabase/admin';
@@ -15,7 +16,11 @@ import { subfolderNeedsBusiness } from '@/lib/naming/folders';
 import { firmDateStamp } from '@/lib/naming/filename';
 import { Alert, Badge, Card, EmptyState, PageHeader } from '@/components/ui';
 import { ActionButtonForm } from '@/components/action-forms';
+import { syncConfigured } from '@/lib/env';
+import { SYNC_ERROR_MESSAGES } from '@/lib/sync/hub';
+import { notionPageUrl } from '@/lib/sync/protocol';
 import { ClientForm } from '../client-form';
+import { syncClientAction } from '../sync-actions';
 import { FolderBrowser } from '../folder-browser';
 import { AssignRequestsForm } from '../assign-requests-form';
 import { RedoForm } from '../redo-form';
@@ -41,11 +46,11 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; imported?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
-  const { created } = await searchParams;
+  const { created, imported } = await searchParams;
   if (!UUID_RE.test(id)) notFound();
 
   const db = serviceSupabase();
@@ -76,6 +81,7 @@ export default async function ClientDetailPage({
   const done = (requests ?? []).filter((r) => r.status === 'accepted');
   const currentYear = Number(firmDateStamp(new Date()).slice(0, 4));
 
+  const sync = syncConfigured();
   const status = CLIENT_STATUS[client.status];
   const archived = client.status === 'archived';
 
@@ -98,6 +104,12 @@ export default async function ClientDetailPage({
           Link or create their SharePoint folder, then request documents.
         </Alert>
       ) : null}
+      {imported ? (
+        <Alert tone="success" title="Client imported">
+          They are linked in Notion and Lead Alchemist. No invite has been sent yet. Link or create
+          their SharePoint folder, request documents, then send the invite.
+        </Alert>
+      ) : null}
       {archived ? (
         <Alert tone="warning" title="Archived">
           This client cannot sign in or see any requests.
@@ -113,6 +125,12 @@ export default async function ClientDetailPage({
                 Linked to <span className="font-medium">{client.sharepoint_folder_path}</span>
               </p>
               <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/admin/files?folder=${encodeURIComponent(client.sharepoint_folder_id)}`}
+                  className="inline-flex min-h-9 items-center rounded-xl bg-brand-700 px-3 text-sm font-medium text-white hover:bg-brand-800"
+                >
+                  Browse files
+                </Link>
                 {client.sharepoint_folder_web_url ? (
                   <a
                     href={client.sharepoint_folder_web_url}
@@ -177,6 +195,55 @@ export default async function ClientDetailPage({
               entity_types: client.entity_types,
             }}
           />
+          <div className="mt-6 space-y-3 border-t border-neutral-100 pt-4">
+            <h3 className="text-sm font-semibold text-neutral-800">Notion and Lead Alchemist</h3>
+            {sync ? (
+              <>
+                <ul className="space-y-1 text-sm">
+                  <li className="flex flex-wrap items-center gap-2">
+                    <span className="w-28 text-neutral-600">Notion</span>
+                    {client.notion_page_id ? (
+                      <a
+                        href={notionPageUrl(client.notion_page_id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-brand-700 hover:underline"
+                      >
+                        Linked · Open ↗
+                      </a>
+                    ) : (
+                      <span className="text-neutral-500">Not linked</span>
+                    )}
+                  </li>
+                  <li className="flex flex-wrap items-center gap-2">
+                    <span className="w-28 text-neutral-600">Lead Alchemist</span>
+                    {client.ghl_contact_id ? (
+                      <span className="font-medium text-emerald-800">Linked</span>
+                    ) : (
+                      <span className="text-neutral-500">Not linked</span>
+                    )}
+                  </li>
+                </ul>
+                <p className="text-xs text-neutral-500">
+                  {client.sync_state === 'error'
+                    ? `Last sync failed: ${SYNC_ERROR_MESSAGES[client.sync_error ?? ''] ?? 'unknown error'}`
+                    : client.sync_state === 'pending'
+                      ? 'Sync in progress…'
+                      : client.synced_at
+                        ? `Last synced ${formatDateTime(client.synced_at)}`
+                        : 'Not synced yet.'}
+                </p>
+                <ActionButtonForm
+                  action={syncClientAction}
+                  hidden={{ client_id: client.id }}
+                  label="Sync now"
+                  pendingLabel="Syncing…"
+                />
+              </>
+            ) : (
+              <p className="text-sm text-neutral-500">Sync is not set up yet.</p>
+            )}
+          </div>
           <div className="mt-6 border-t border-neutral-100 pt-4">
             <ActionButtonForm
               action={setArchivedAction}

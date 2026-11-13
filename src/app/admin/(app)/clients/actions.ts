@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/admin';
 import { audit } from '@/lib/audit';
@@ -18,6 +19,7 @@ import { graphEnv } from '@/lib/env';
 import { requestMeta } from '@/lib/request-meta';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { log } from '@/lib/log';
+import { pushClient } from '@/lib/sync/hub';
 
 const ENTITY_VALUES = ['individual', 'schedule_c', '1120s', '1065', 'other'] as const;
 
@@ -87,6 +89,9 @@ export async function createClientAction(_prev: ActionState, form: FormData): Pr
     targetId: data.id,
     meta: await requestMeta(),
   });
+  // Create or link the matching Notion client and Lead Alchemist contact in the background.
+  const newId = data.id;
+  after(() => pushClient(newId, admin.aid));
   redirect(`/admin/clients/${data.id}?created=1`);
 }
 
@@ -133,6 +138,7 @@ export async function updateClientAction(_prev: ActionState, form: FormData): Pr
     metadata: { email_changed: parsed.data.email !== current.email },
     meta: await requestMeta(),
   });
+  after(() => pushClient(clientId, admin.aid));
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true, message: 'Saved.' };
 }
@@ -167,6 +173,7 @@ export async function setArchivedAction(_prev: ActionState, form: FormData): Pro
     targetId: clientId,
     meta: await requestMeta(),
   });
+  after(() => pushClient(clientId, admin.aid));
   revalidatePath(`/admin/clients/${clientId}`);
   return {
     ok: true,

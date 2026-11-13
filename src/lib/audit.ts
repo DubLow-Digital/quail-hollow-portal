@@ -40,7 +40,13 @@ export type AuditAction =
   | 'bundle.updated'
   | 'bundle.deleted'
   | 'email.sent'
-  | 'email.failed';
+  | 'email.failed'
+  | 'file.downloaded'
+  | 'sync.pushed'
+  | 'sync.push_failed'
+  | 'sync.received'
+  | 'sync.rejected'
+  | 'client.imported';
 
 export type AuditTarget = 'client' | 'admin' | 'request' | 'upload' | 'document_type' | 'bundle';
 

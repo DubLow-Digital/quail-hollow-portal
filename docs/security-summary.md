@@ -23,6 +23,8 @@ Microsoft work account.
 | Upload records: final filename, size, type, page count, SharePoint item ID    | Supabase Postgres                         | Metadata only.                                                                             |
 | Audit log: who did what, when, IP address, browser type                       | Supabase Postgres                         | IDs and event types only; append-only.                                                     |
 | Sign-in codes                                                                 | Supabase Auth                             | Expire after 10 minutes; single use.                                                       |
+| Links to the client's Notion record and Lead Alchemist contact (IDs only)     | Supabase Postgres                         | Admin-only columns; clients cannot read them.                                              |
+| Client name, email, phone, client type and portal status (copies)             | Notion CRM and Lead Alchemist             | Sent through the quail-hollow-sync service. No documents, SSNs, notes or upload details.   |
 | Secrets (API keys, app credentials)                                           | Vercel encrypted environment variables    | Never in source code.                                                                      |
 
 ## 3. How files travel
@@ -43,6 +45,11 @@ location from phone pictures.
 
 ## 4. Access control
 
+- **Admin file browser:** Aleida (and DubLow) can browse the client folders and their files from
+  the admin area. It is read-only, limited to the client folders area, and every download is
+  recorded in the audit log. Downloads go straight from SharePoint to the admin's browser through
+  Microsoft's own short-lived link; the portal never handles the file.
+
 - **Clients** sign in with a 6-digit code emailed to the address on file. Public sign-up is
   disabled; only Aleida can create a client. Each client can read only their own record, their
   own requests and their own uploads. This is enforced in the database itself (row level
@@ -62,6 +69,14 @@ location from phone pictures.
   access to one SharePoint site only. It cannot read or write any other site, mailbox or
   OneDrive. A verification script proves this.
 - **Archiving** a client immediately blocks their sign-in and hides all of their requests.
+
+### Notion and Lead Alchemist sync
+
+Client contact details are kept in step with the firm's Notion CRM and Lead Alchemist through
+DubLow's quail-hollow-sync service (docs/sync.md). Only name, email, phone, client type and
+portal status are shared. Every call between the portal and the sync service is signed with a
+shared secret and expires after 5 minutes. Outside changes can never change a client's sign-in
+email or create a portal client, and every change received is recorded in the audit log.
 
 ## 5. Protection against common attacks
 
@@ -92,6 +107,9 @@ location from phone pictures.
 | Supabase                              | Database and client sign-in     | Client profile, request and upload metadata, audit log |
 | Vercel                                | Hosting                         | Transient request processing only; no file contents    |
 | Resend                                | Transactional email             | Client name and email in notification emails           |
+| Notion                                | Firm CRM                        | Client name, email, phone, client type, portal status  |
+| HighLevel (Lead Alchemist)            | Firm CRM and marketing          | Client name, email, phone                              |
+| quail-hollow-sync (DubLow, on Vercel) | Sync between portal and CRMs    | Passes the fields above through; stores none of them   |
 | DubLow Digital                        | Developer and IT provider       | Admin access for support, on the allowlist             |
 
 Quail Hollow should keep each provider's security documentation (SOC 2 reports, DPAs) with the
@@ -110,16 +128,20 @@ WISP and review them annually.
    secure typed field.
 5. **Access reviews:** review the admin allowlist and the Entra app assignments at least
    quarterly, and rotate the app secrets (or move to certificates) before expiry.
-6. **Incident response:** add the portal to the WISP's incident response plan. To cut off access
+6. **CRM sharing:** client contact details now also live in Notion and Lead Alchemist. Confirm
+   both are listed as service providers in the WISP, and that Lead Alchemist workflows do not
+   send marketing to portal clients (they are tagged `client portal`).
+7. **Incident response:** add the portal to the WISP's incident response plan. To cut off access
    quickly: archive the client (blocks sign-in), remove an admin from `ADMIN_ALLOWLIST`, or
-   disable the "Quail Hollow Client Portal" app in Entra (stops all uploads).
+   disable the "Quail Hollow Client Portal" app in Entra (stops all uploads). Removing
+   `SYNC_HUB_SECRET` from the portal turns the Notion and Lead Alchemist sync off.
 
 ## 9. Testing performed
 
-- 103 automated unit tests (filename rules, folder rules, file type checks, session limits,
+- 129 automated unit tests (filename rules, folder rules, file type checks, session limits,
   signed cookies, CSP, upload chunking and retry, PDF assembly, upload verification, email
   escaping, log and audit redaction).
-- 33 database tests proving row level security against a real Postgres database.
+- 34 database tests proving row level security against a real Postgres database.
 - 28 browser tests on phone-sized screens (security headers, CSP, route protection, CSRF
   checks, sign-in form).
 - Lighthouse mobile: performance 99, accessibility 100 on the sign-in pages.
