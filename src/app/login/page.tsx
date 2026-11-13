@@ -21,7 +21,9 @@ export default async function LoginPage({
     <div className="min-h-dvh">
       <ClientHeader />
       <main className="mx-auto max-w-md px-4 pt-8">
-        <h1 className="text-2xl font-semibold text-brand-900">Sign in to send your documents</h1>
+        <h1 className="font-serif text-2xl font-semibold text-brand-900">
+          Sign in to send your documents
+        </h1>
         <p className="mt-2 text-neutral-700">
           Enter the email address we have on file. We will send you a one-time code. No password
           needed.

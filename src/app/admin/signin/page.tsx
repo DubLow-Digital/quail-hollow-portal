@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getAdmin } from '@/lib/auth/admin';
 import { safeNextPath } from '@/lib/auth/routes';
 import { Alert, Card } from '@/components/ui';
+import { BrandLogo } from '@/components/client/brand';
 
 export const metadata: Metadata = { title: 'Admin sign in' };
 
@@ -28,8 +29,8 @@ export default async function AdminSignInPage({
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
       <Card className="space-y-5">
         <div>
-          <p className="text-sm font-semibold text-brand-700">Quail Hollow Accounting</p>
-          <h1 className="mt-1 text-2xl font-semibold text-brand-900">Admin sign in</h1>
+          <BrandLogo size="sm" />
+          <h1 className="mt-5 font-serif text-2xl font-semibold text-brand-900">Admin sign in</h1>
           <p className="mt-2 text-sm text-neutral-600">
             Use your Quail Hollow Microsoft account. Only approved staff can sign in.
           </p>

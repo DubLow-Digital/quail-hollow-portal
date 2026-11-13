@@ -8,10 +8,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const admin = await requireAdmin();
   return (
     <div className="min-h-dvh">
-      <header className="border-b border-brand-800 bg-brand-700 text-white">
+      <header className="border-b border-brand-900 bg-brand-800 text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div>
-            <p className="text-sm font-semibold tracking-wide">Quail Hollow Accounting</p>
+            <p className="font-display text-base font-semibold tracking-[0.08em] uppercase">
+              Quail Hollow
+            </p>
             <p className="text-xs text-brand-100">Client portal admin</p>
           </div>
           <div className="flex items-center gap-3">

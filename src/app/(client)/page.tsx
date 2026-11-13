@@ -31,7 +31,9 @@ export default async function ChecklistPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-brand-900">Hello, {client.first_name}</h1>
+        <h1 className="font-serif text-2xl font-semibold text-brand-900">
+          Hello, {client.first_name}
+        </h1>
         <p className="mt-1 text-neutral-700">
           {outstanding.length
             ? `We need ${outstanding.length} document${outstanding.length === 1 ? '' : 's'} from you. Tap one to send it.`
@@ -119,7 +121,7 @@ export default async function ChecklistPage() {
                   className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-black/5 hover:bg-white"
                 >
                   <span className="flex items-center gap-2">
-                    <span aria-hidden="true" className="text-emerald-600">
+                    <span aria-hidden="true" className="text-sage-700">
                       ✓
                     </span>
                     <span>

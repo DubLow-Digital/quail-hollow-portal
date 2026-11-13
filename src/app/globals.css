@@ -1,20 +1,29 @@
 @import 'tailwindcss';
 
+/* Palette taken from the Quail Hollow logo: warm brown wordmark, gold rule, sage and
+   cream eggs, woven nest. */
 @theme {
-  --color-brand-50: #eef5f1;
-  --color-brand-100: #d6e8de;
-  --color-brand-200: #aed1bd;
-  --color-brand-500: #3a7a5c;
-  --color-brand-600: #2a6249;
-  --color-brand-700: #1f4d3a;
-  --color-brand-800: #173b2c;
-  --color-brand-900: #0f271d;
-  --color-accent-400: #c9a874;
-  --color-accent-500: #b08d57;
-  --color-canvas: #f7f5f0;
-  --color-ink: #1c1c1a;
+  --color-brand-50: #f6f1e9;
+  --color-brand-100: #ece2d2;
+  --color-brand-200: #dbc9ad;
+  --color-brand-500: #8a6f4f;
+  --color-brand-600: #6f5840;
+  --color-brand-700: #5b4734;
+  --color-brand-800: #483829;
+  --color-brand-900: #33281e;
+  --color-accent-400: #c3ab7f;
+  --color-accent-500: #a88e5f;
+  --color-sage-50: #eef3ee;
+  --color-sage-100: #dde7dd;
+  --color-sage-200: #c1d2c1;
+  --color-sage-500: #8ea489;
+  --color-sage-700: #5d7559;
+  --color-cream: #efe6d4;
+  --color-canvas: #faf7f2;
+  --color-ink: #2b241e;
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-cinzel), 'Trajan Pro', Georgia, 'Times New Roman', serif;
 }
 
 @layer base {

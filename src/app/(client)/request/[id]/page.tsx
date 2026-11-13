@@ -49,7 +49,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
       </Link>
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-brand-900">{title}</h1>
+          <h1 className="font-serif text-2xl font-semibold text-brand-900">{title}</h1>
           <Badge tone={status.tone}>{status.client}</Badge>
         </div>
         {req.business_name ? <p className="text-neutral-700">For {req.business_name}</p> : null}

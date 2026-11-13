@@ -1,4 +1,11 @@
 import type { NextConfig } from 'next';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Use the real logo when it has been added to public/brand (see public/brand/README.md).
+const brandLogo = existsSync(join(process.cwd(), 'public', 'brand', 'logo-horizontal.png'))
+  ? '/brand/logo-horizontal.png'
+  : '';
 
 /**
  * Static security headers applied to every response. The Content-Security-Policy is
@@ -22,6 +29,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: { NEXT_PUBLIC_BRAND_LOGO: brandLogo },
   reactStrictMode: true,
   serverExternalPackages: ['@azure/msal-node'],
   experimental: {
