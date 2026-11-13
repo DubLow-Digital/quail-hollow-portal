@@ -64,8 +64,8 @@ export function sanitizeMetadata(metadata: Record<string, MetaValue> = {}): Reco
   for (const [key, value] of Object.entries(metadata)) {
     if (!SAFE_KEY.test(key) || FORBIDDEN_KEY.test(key)) continue;
     if (typeof value === 'string') {
-      // Enum-like values and IDs only.
-      if (!/^[A-Za-z0-9_.:-]{0,80}$/.test(value)) continue;
+      // Enum-like values, IDs and MIME types only; never URLs.
+      if (!/^[A-Za-z0-9_.:/+-]{0,80}$/.test(value) || /^https?:/i.test(value)) continue;
       out[key] = value;
     } else if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
       out[key] = value;
