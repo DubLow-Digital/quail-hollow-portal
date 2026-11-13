@@ -55,6 +55,7 @@ export type Database = {
           sharepoint_drive_id: string | null;
           sharepoint_folder_id: string | null;
           sharepoint_folder_path: string | null;
+          sharepoint_folder_web_url: string | null;
           auth_user_id: string | null;
           invited_at: string | null;
           last_login_at: string | null;
@@ -72,6 +73,7 @@ export type Database = {
           sharepoint_drive_id?: string | null;
           sharepoint_folder_id?: string | null;
           sharepoint_folder_path?: string | null;
+          sharepoint_folder_web_url?: string | null;
           auth_user_id?: string | null;
           invited_at?: string | null;
           last_login_at?: string | null;

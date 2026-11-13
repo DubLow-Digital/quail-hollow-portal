@@ -62,12 +62,18 @@ create table public.clients (
   sharepoint_drive_id text,
   sharepoint_folder_id text,
   sharepoint_folder_path text check (sharepoint_folder_path is null or char_length(sharepoint_folder_path) <= 400),
+  sharepoint_folder_web_url text check (sharepoint_folder_web_url is null or char_length(sharepoint_folder_web_url) <= 2000),
   auth_user_id uuid unique references auth.users (id) on delete set null,
   invited_at timestamptz,
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- A SharePoint folder can belong to only one client.
+create unique index clients_sharepoint_folder_unique
+  on public.clients (sharepoint_folder_id)
+  where sharepoint_folder_id is not null;
 
 create trigger clients_set_updated_at
   before update on public.clients
