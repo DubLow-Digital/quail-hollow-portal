@@ -178,3 +178,23 @@ export function accessTokenFromCookies(cookies: { name: string; value: string }[
   if (!token) throw new Error('No Supabase session cookie');
   return token;
 }
+
+/**
+ * Waits for a signed-in page; on failure, reports what the browser had (cookie names only,
+ * never values) and where it ended up, so a CI failure explains itself.
+ */
+export async function expectSignedInAt(page: Page, path: string): Promise<void> {
+  try {
+    await page.waitForURL((u) => u.pathname === path, { timeout: 20_000 });
+  } catch (err) {
+    const names = (await page.context().cookies()).map((c) => `${c.name}(${c.value.length})`);
+    const heading = await page
+      .locator('h1')
+      .first()
+      .textContent()
+      .catch(() => null);
+    throw new Error(
+      `Expected ${path} after sign-in; at ${page.url()} (h1: ${heading ?? 'none'}); cookies: ${names.join(', ') || 'none'}. ${(err as Error).message.split('\n')[0]}`,
+    );
+  }
+}

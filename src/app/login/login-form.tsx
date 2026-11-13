@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Alert, Button, Field, Input } from '@/components/ui';
 
 type Step = 'email' | 'code';
@@ -17,7 +16,6 @@ export function LoginForm({
   requestPath?: string;
   verifyPath?: string;
 }) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -96,8 +94,12 @@ export function LoginForm({
         return;
       }
       const body = (await res.json()) as { redirect?: string };
-      router.replace(body.redirect ?? '/');
-      router.refresh();
+      const target =
+        body.redirect?.startsWith('/') && !body.redirect.startsWith('//') ? body.redirect : '/';
+      // A full page load, not a client-side transition: the browser may hold a cached
+      // "redirect to sign-in" for the target from before the session existed.
+      window.location.assign(target);
+      return;
     } catch {
       setError('We could not reach the portal. Check your connection and try again.');
     } finally {

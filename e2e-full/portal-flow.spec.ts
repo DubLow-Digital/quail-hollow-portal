@@ -13,6 +13,7 @@ import {
   accessTokenFromCookies,
   adminRest,
   clientRest,
+  expectSignedInAt,
   firmDate,
   GRAPH_MOCK,
   makePng,
@@ -95,7 +96,7 @@ async function requestIds(clientId: string) {
 
 test('Aleida signs in with an emailed code and sets up two clients', async () => {
   codes.push(await signInWithCode(admin, '/admin/signin', ADMIN));
-  await admin.waitForURL(/\/admin$/);
+  await expectSignedInAt(admin, '/admin');
 
   ids.todd = await addClient(TODD);
   await requestDocs(ids.todd, [DL, BANK]);
@@ -111,7 +112,7 @@ test('Aleida signs in with an emailed code and sets up two clients', async () =>
 
 test('the client signs in on a phone and sees exactly their own requests', async () => {
   codes.push(await signInWithCode(todd, '/login', TODD.email));
-  await todd.waitForURL((u) => u.pathname === '/');
+  await expectSignedInAt(todd, '/');
   await expect(todd.getByRole('heading', { name: 'Still needed' })).toBeVisible();
   const hrefs = await todd
     .locator('a[href^="/request/"]')

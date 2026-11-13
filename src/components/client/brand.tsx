@@ -88,7 +88,7 @@ export function ClientHeader({ right }: { right?: ReactNode }) {
   return (
     <header className="border-b border-accent-400/40 bg-white">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/">
+        <Link href="/" prefetch={false}>
           <BrandLogo />
         </Link>
         {right}

@@ -16,6 +16,7 @@ import {
 } from '@/lib/auth/session-policy';
 import { SUPABASE_COOKIE_OPTIONS, isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
 import { classifyPath, safeNextPath } from '@/lib/auth/routes';
+import { log } from '@/lib/log';
 
 /**
  * Runs before every page and API request:
@@ -138,6 +139,11 @@ function deny(
   request: NextRequest,
   opts: { isPageGet: boolean; loginPath: string; reason: string; csp: string },
 ): NextResponse {
+  // Reason codes only (missing / invalid / idle / expired); no identifiers.
+  log.warn('auth.session_denied', {
+    route: opts.loginPath === '/login' ? 'client' : 'admin',
+    reason: opts.reason,
+  });
   if (!opts.isPageGet) {
     return withCsp(
       NextResponse.json({ error: 'unauthorized', reason: opts.reason }, { status: 401 }),
