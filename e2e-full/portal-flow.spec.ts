@@ -283,7 +283,7 @@ test('Connect SharePoint shows what the portal app can reach and saves the folde
   await admin.getByRole('button', { name: 'Use this folder for client folders' }).click();
   await admin.waitForURL(/\/admin\/files\?connected=1/);
   await expect(admin.getByText('SharePoint connected')).toBeVisible();
-  await expect(admin.getByRole('link', { name: 'Test, Todd' })).toBeVisible();
+  await expect(admin.getByRole('link', { name: 'Test, Todd', exact: true })).toBeVisible();
 
   const saved = await adminRest<{ key: string; value: string }[]>(
     'portal_settings?select=key,value',
