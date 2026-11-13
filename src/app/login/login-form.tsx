@@ -8,7 +8,15 @@ type Step = 'email' | 'code';
 
 const RESEND_COOLDOWN_S = 60;
 
-export function LoginForm({ next }: { next: string | null }) {
+export function LoginForm({
+  next,
+  requestPath = '/api/auth/otp/request',
+  verifyPath = '/api/auth/otp/verify',
+}: {
+  next: string | null;
+  requestPath?: string;
+  verifyPath?: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -40,7 +48,7 @@ export function LoginForm({ next }: { next: string | null }) {
     }
     setBusy(true);
     try {
-      const res = await fetch('/api/auth/otp/request', {
+      const res = await fetch(requestPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: value }),
@@ -74,7 +82,7 @@ export function LoginForm({ next }: { next: string | null }) {
     }
     setBusy(true);
     try {
-      const res = await fetch('/api/auth/otp/verify', {
+      const res = await fetch(verifyPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), code: digits, next: next ?? undefined }),

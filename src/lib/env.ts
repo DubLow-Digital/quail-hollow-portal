@@ -87,6 +87,10 @@ const adminAuthSchema = z.object({
   ADMIN_ALLOWLIST: emailList,
 });
 
+const allowlistSchema = z.object({
+  ADMIN_ALLOWLIST: emailList,
+});
+
 const emailSchema = z.object({
   RESEND_API_KEY: nonEmpty,
   EMAIL_FROM: nonEmpty,
@@ -100,6 +104,7 @@ type SupabaseEnv = z.infer<typeof supabaseSchema>;
 type GraphEnv = z.infer<typeof graphSchema>;
 type AdminAuthEnv = z.infer<typeof adminAuthSchema>;
 type EmailEnv = z.infer<typeof emailSchema>;
+type AllowlistEnv = z.infer<typeof allowlistSchema>;
 
 const cache = new Map<string, unknown>();
 
@@ -116,6 +121,17 @@ export const graphEnv = (): GraphEnv =>
 export const adminAuthEnv = (): AdminAuthEnv =>
   cached('adminAuth', () => parseGroup('admin sign-in', adminAuthSchema));
 export const emailEnv = (): EmailEnv => cached('email', () => parseGroup('email', emailSchema));
+export const allowlistEnv = (): AllowlistEnv =>
+  cached('allowlist', () => parseGroup('admin allowlist', allowlistSchema));
+
+/**
+ * Backup admin sign-in with an emailed code (for when Microsoft sign-in is unavailable).
+ * Off unless ADMIN_EMAIL_LOGIN is exactly "true". It is single-factor, so keep it off in
+ * production once Microsoft sign-in works (see docs/security-summary.md).
+ */
+export function adminEmailLoginEnabled(): boolean {
+  return process.env.ADMIN_EMAIL_LOGIN === 'true';
+}
 
 /** Test helper: forget cached values after mutating process.env. */
 export function resetEnvCacheForTests(): void {

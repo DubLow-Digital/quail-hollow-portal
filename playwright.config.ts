@@ -34,6 +34,8 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder',
       SUPABASE_SERVICE_ROLE_KEY: 'placeholder',
       SP_HOSTNAME: 'example.sharepoint.com',
+      ADMIN_ALLOWLIST: 'admin@example.test',
+      ADMIN_EMAIL_LOGIN: 'true',
     },
   },
 });

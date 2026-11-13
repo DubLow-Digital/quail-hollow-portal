@@ -2,7 +2,7 @@ import 'server-only';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { ConfidentialClientApplication, CryptoProvider, ResponseMode } from '@azure/msal-node';
 import { z } from 'zod';
-import { adminAuthEnv, appEnv } from '@/lib/env';
+import { adminAuthEnv, allowlistEnv, appEnv } from '@/lib/env';
 import { signValue, verifyValue } from '@/lib/security/signed-cookie';
 import { ADMIN_OAUTH_COOKIE } from './session-policy';
 import { safeNextPath } from './routes';
@@ -115,7 +115,7 @@ export function allowedTenants(): string[] {
 }
 
 export function isAllowlisted(email: string): boolean {
-  return adminAuthEnv().ADMIN_ALLOWLIST.includes(email.trim().toLowerCase());
+  return allowlistEnv().ADMIN_ALLOWLIST.includes(email.trim().toLowerCase());
 }
 
 export async function completeAdminSignIn(

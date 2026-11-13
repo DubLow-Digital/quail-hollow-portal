@@ -53,6 +53,11 @@ location from phone pictures.
 - **Admins** sign in with Microsoft (Aleida's Entra ID tenant). Access requires being on an
   explicit allowlist, and each allowed email is bound to one Microsoft account. Admin sessions
   end after 60 idle minutes or 12 hours.
+- **Backup admin sign-in (off by default):** setting `ADMIN_EMAIL_LOGIN=true` lets allowlisted
+  admins sign in with a one-time code emailed to their address, for use while Microsoft
+  sign-in is unavailable. It is rate limited and audited (`method=email_code`), but it is a
+  single factor, so it should be switched off in production once Microsoft sign-in (with MFA)
+  is working.
 - **SharePoint access** uses a dedicated app with the `Sites.Selected` permission, granted write
   access to one SharePoint site only. It cannot read or write any other site, mailbox or
   OneDrive. A verification script proves this.

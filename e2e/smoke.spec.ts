@@ -165,3 +165,32 @@ test.describe('sign-in form', () => {
     );
   });
 });
+
+test.describe('backup admin sign-in by email code', () => {
+  test('is offered on the admin sign-in page when enabled', async ({ page }) => {
+    await page.route('**/api/auth/admin/code/request', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
+    );
+    await page.goto('/admin/signin');
+    await expect(page.getByRole('link', { name: 'Sign in with Microsoft' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Or get a code by email' })).toBeVisible();
+    await page.getByLabel('Email address').fill('admin@example.test');
+    await page.getByRole('button', { name: 'Email me a code' }).click();
+    await expect(page.getByLabel('Enter your code')).toBeVisible();
+  });
+
+  test('its endpoints reject other origins', async ({ request }) => {
+    const evil = { origin: 'https://evil.example' };
+    expect(
+      (
+        await request.post('/api/auth/admin/code/request', {
+          headers: evil,
+          data: { email: 'admin@example.test' },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (await request.post('/api/auth/admin/code/verify', { headers: evil, data: {} })).status(),
+    ).toBe(403);
+  });
+});

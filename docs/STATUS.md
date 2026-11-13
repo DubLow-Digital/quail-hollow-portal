@@ -37,6 +37,10 @@ Done:
 - `supabase/setup-all.sql`: every migration in one file for the Supabase SQL editor (a test keeps
   it in sync; it applies cleanly to a fresh database).
 
+- Backup admin sign-in by emailed code (`ADMIN_EMAIL_LOGIN=true`), added during the Microsoft
+  outage on Nov 13. Turn it off in production once Microsoft sign-in works.
+- Fixed: the admin allowlist check no longer needs the Microsoft admin-app settings.
+
 Remaining:
 
 1. Vercel env vars `AUTH_SECRET` (separate preview and production values) and `ADMIN_ALLOWLIST`.

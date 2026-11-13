@@ -4,6 +4,8 @@ import { getAdmin } from '@/lib/auth/admin';
 import { safeNextPath } from '@/lib/auth/routes';
 import { Alert, Card } from '@/components/ui';
 import { BrandLogo } from '@/components/client/brand';
+import { adminEmailLoginEnabled } from '@/lib/env';
+import { LoginForm } from '@/app/login/login-form';
 
 export const metadata: Metadata = { title: 'Admin sign in' };
 
@@ -24,6 +26,7 @@ export default async function AdminSignInPage({
 
   const next = safeNextPath(params.next ?? null);
   const href = `/api/auth/signin/microsoft${next ? `?next=${encodeURIComponent(next)}` : ''}`;
+  const codeLogin = adminEmailLoginEnabled();
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
@@ -55,6 +58,21 @@ export default async function AdminSignInPage({
           </svg>
           Sign in with Microsoft
         </a>
+        {codeLogin ? (
+          <div className="space-y-4 border-t border-neutral-100 pt-5">
+            <div>
+              <h2 className="text-base font-semibold text-brand-900">Or get a code by email</h2>
+              <p className="mt-1 text-sm text-neutral-600">
+                Use this if Microsoft sign-in is unavailable. Approved staff only.
+              </p>
+            </div>
+            <LoginForm
+              next={next?.startsWith('/admin') ? next : '/admin'}
+              requestPath="/api/auth/admin/code/request"
+              verifyPath="/api/auth/admin/code/verify"
+            />
+          </div>
+        ) : null}
       </Card>
     </main>
   );
