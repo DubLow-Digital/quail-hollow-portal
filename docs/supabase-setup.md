@@ -6,20 +6,33 @@ includes daily backups.
 
 ## 1. Create the project and apply migrations
 
+**Recommended: through Vercel (env vars are added for you).**
+
+1. Vercel → project `quail-hollow-portal` → **Storage → Create Database → Supabase**.
+2. Plan: Free (or Pro for daily backups at go-live). Region: **East US (N. Virginia)**, next to the
+   `iad1` functions. Connect it to the project for **Production and Preview**.
+3. Vercel adds `NEXT_PUBLIC_SUPABASE_URL`, the anon/publishable key and the service-role/secret key.
+   The portal accepts either key naming.
+4. Open the new project in Supabase → **SQL Editor** → paste all of
+   [`supabase/setup-all.sql`](../supabase/setup-all.sql) → **Run** once. It contains every
+   migration in order (schema, RLS, reference data) and no test data.
+
+**Alternative: create it at supabase.com** (DubLow organization, East US), then:
+
 ```bash
 supabase login
 supabase link --project-ref <project-ref>
 supabase db push          # applies supabase/migrations in order
 ```
 
-Do **not** run `supabase/seed.sql` against production; it contains fake test people for local
-development only. Reference data (document types and bundles) is part of the migrations.
-
-Copy from **Project Settings → API**:
+and copy from **Project Settings → API** into Vercel:
 
 - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
 - `anon` (or publishable) key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `service_role` (or secret) key → `SUPABASE_SERVICE_ROLE_KEY` (server only, never exposed)
+
+Do **not** run `supabase/seed.sql` against a real project; it holds fake people for local
+development only.
 
 ## 2. Lock down the Data API
 

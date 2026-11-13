@@ -26,17 +26,26 @@ _Last updated: November 13, 2026_
   best practices 96–100. SEO is intentionally low (the portal tells search engines not to index it).
 - Typecheck, lint and Prettier clean; production build succeeds
 
-## Next: milestone 10, deploy to a Vercel preview (needs Todd's go-ahead)
+## Milestone 10: deploy to a Vercel preview (in progress)
 
-These create cloud resources or touch Aleida's tenant, so they wait for approval:
+Done:
 
-1. Supabase project (docs/supabase-setup.md): apply migrations, Auth settings, Resend SMTP,
-   code email template
-2. Entra apps in Aleida's tenant and the one-site grant (docs/entra-setup.md), then
-   `npm run graph:check`
-3. Resend: verify the sending domain (DNS change)
-4. Vercel project, env vars, preview protection (docs/deploy.md)
-5. Todd tests on iPhone and Android with the fake "Todd Test" client (docs/deploy.md step 5)
+- Vercel project `quail-hollow-portal` created in the team, linked to this repo (production
+  branch `main`; previews build from PR branches).
+- Previews use their own branch URL automatically when `APP_BASE_URL` is unset, and the app
+  accepts Supabase's newer publishable/secret key names.
+- `supabase/setup-all.sql`: every migration in one file for the Supabase SQL editor (a test keeps
+  it in sync; it applies cleanly to a fresh database).
+
+Remaining:
+
+1. Vercel env vars `AUTH_SECRET` (separate preview and production values) and `ADMIN_ALLOWLIST`.
+2. Supabase project (docs/supabase-setup.md step 1), Auth settings, Resend SMTP, code template.
+   The build sandbox cannot reach Supabase, so this is a dashboard step.
+3. Entra apps in Aleida's tenant and the one-site grant (docs/entra-setup.md), then
+   `npm run graph:check`.
+4. Resend: verify the sending domain (DNS change).
+5. Todd tests on iPhone and Android with the fake "Todd Test" client (docs/deploy.md step 5).
 
 ## Not yet verified (needs real services)
 

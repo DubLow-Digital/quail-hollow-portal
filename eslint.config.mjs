@@ -25,7 +25,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['scripts/**/*.ts', 'tests/**/*.ts', 'e2e/**/*.ts'],
+    files: ['scripts/**/*.ts', 'scripts/**/*.mjs', 'tests/**/*.ts', 'e2e/**/*.ts'],
     rules: { 'no-console': 'off' },
   },
 ]);

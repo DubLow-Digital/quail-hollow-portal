@@ -7,8 +7,30 @@ import { z } from 'zod';
  * Error messages name the missing variables but never echo their values.
  */
 
+/**
+ * process.env plus documented fallbacks:
+ * - Vercel preview deployments use their branch URL when APP_BASE_URL is not set.
+ * - Supabase's newer key names (publishable / secret), as injected by the Vercel
+ *   Supabase integration, are accepted for the anon and service-role keys.
+ */
+export function resolvedEnv(
+  env: Record<string, string | undefined> = process.env,
+): Record<string, string | undefined> {
+  const previewUrl =
+    env.VERCEL_ENV === 'preview' && env.VERCEL_BRANCH_URL
+      ? `https://${env.VERCEL_BRANCH_URL}`
+      : undefined;
+  return {
+    ...env,
+    APP_BASE_URL: env.APP_BASE_URL || previewUrl,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY,
+  };
+}
+
 function parseGroup<T extends z.ZodType>(group: string, schema: T): z.infer<T> {
-  const result = schema.safeParse(process.env);
+  const result = schema.safeParse(resolvedEnv());
   if (!result.success) {
     const names = [...new Set(result.error.issues.map((i) => String(i.path[0] ?? 'unknown')))];
     throw new Error(`Missing or invalid ${group} environment variables: ${names.join(', ')}`);
