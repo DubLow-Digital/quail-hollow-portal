@@ -1,0 +1,10 @@
+node_modules
+.next
+coverage
+playwright-report
+playwright-report-full
+test-results
+package-lock.json
+CLAUDE.md
+src/app/fonts
+supabase/setup-all.sql

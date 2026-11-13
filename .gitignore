@@ -12,6 +12,7 @@ build/
 dist/
 coverage/
 playwright-report/
+playwright-report-full/
 test-results/
 blob-report/
 *.tsbuildinfo
