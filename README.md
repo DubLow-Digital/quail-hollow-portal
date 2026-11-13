@@ -39,7 +39,7 @@ npm run lint
 npm run format:check
 npm test                      # unit tests
 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres npm run test:db
-npm run test:e2e              # Playwright smoke tests (builds and starts the app)
+npm run build && npm run test:e2e   # Playwright smoke tests on phone viewports
 ```
 
 `test:db` creates a throwaway database, applies a small Supabase compatibility shim
@@ -54,6 +54,13 @@ browser uses to upload in chunks directly to SharePoint. The Entra app holds
 `Sites.Selected` write access to a single site. Every table has RLS; admin operations run
 server-side with the service role after an admin session check. Logs and the audit table
 hold IDs and event types only. See [`docs/security-summary.md`](./docs/security-summary.md).
+
+## Branding
+
+Colors and type come from the Quail Hollow logo (warm brown wordmark, gold rule, sage and cream
+eggs). The Trajan-style wordmark uses Cinzel, self-hosted under the SIL Open Font License
+(`src/app/fonts`). To use the real logo files, add `public/brand/logo-horizontal.png`; see
+[`public/brand/README.md`](./public/brand/README.md).
 
 ## Setup runbooks
 
