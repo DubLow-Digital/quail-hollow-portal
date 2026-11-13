@@ -8,6 +8,7 @@ import {
   UPLOAD_STATUS,
   formatDate,
   formatDateTime,
+  isAbandonedUpload,
 } from '@/lib/status';
 import { formatBytes } from '@/lib/files/types';
 import { subfolderNeedsBusiness } from '@/lib/naming/folders';
@@ -264,9 +265,13 @@ export default async function ClientDetailPage({
                             </span>
                           </span>
                           <span className="flex items-center gap-2">
-                            <Badge tone={UPLOAD_STATUS[u.status].tone}>
-                              {UPLOAD_STATUS[u.status].label}
-                            </Badge>
+                            {isAbandonedUpload(u.status, u.started_at) ? (
+                              <Badge>Did not finish</Badge>
+                            ) : (
+                              <Badge tone={UPLOAD_STATUS[u.status].tone}>
+                                {UPLOAD_STATUS[u.status].label}
+                              </Badge>
+                            )}
                             {u.status === 'complete' && u.sharepoint_web_url ? (
                               <a
                                 href={u.sharepoint_web_url}

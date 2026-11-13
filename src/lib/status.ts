@@ -62,3 +62,12 @@ export function formatDate(value: string | null | undefined): string {
 export function formatDateTime(value: string | null | undefined): string {
   return value ? dateTimeFormatter.format(new Date(value)) : '';
 }
+
+/** Uploads still pending a day after they started were abandoned in the browser. */
+export function isAbandonedUpload(
+  status: UploadStatus,
+  startedAt: string,
+  now = Date.now(),
+): boolean {
+  return status === 'pending' && now - Date.parse(startedAt) > 24 * 60 * 60 * 1000;
+}
