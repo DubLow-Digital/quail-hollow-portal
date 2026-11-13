@@ -56,7 +56,9 @@ email_sent = 30
 token_verifications = 30
 
 [auth.email]
-enable_signup = false
+# This switch is the email sign-in provider itself (codes need it on). New accounts are
+# still blocked by `enable_signup = false` under [auth] above.
+enable_signup = true
 enable_confirmations = false
 double_confirm_changes = true
 secure_password_change = true
