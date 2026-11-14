@@ -183,6 +183,8 @@ AUTH_SECRET=
 - Keep dependencies minimal and pinned; no package published in the last 14 days.
 - Client-facing copy is plain, professional and confident. Never mention SharePoint, Supabase or Graph to clients.
 - When a milestone is done, update `docs/STATUS.md` with what shipped, what's next, and open questions.
+- Every pull request adds an entry to `CHANGELOG.md` under today's date (Added, Changed, Fixed, Removed, Security or Operations), written plainly and ending with the PR link. Record setup changes made outside the code (Vercel settings, Supabase, Entra) as Operations entries, by name only. CI fails a PR that skips it unless it carries the `no-changelog` label.
+- After a merge that changes what Aleida or her clients see, also update the Quail Hollow HQ master file in SharePoint (Second Brain, `00-Quail-Hollow-HQ.md`): its Change log section, and Snapshot or Active work if they changed. If this session cannot reach SharePoint, say so to Todd instead of skipping it silently.
 
 ## 15. Open decisions (flag to Todd, do not guess)
 
