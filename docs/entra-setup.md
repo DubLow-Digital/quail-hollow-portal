@@ -109,7 +109,11 @@ Content-Type: application/json
    `MS_ADMIN_CLIENT_ID`.
 5. Recommended: **Enterprise applications → Quail Hollow Portal Admin Sign-in → Properties →
    Assignment required = Yes**, then assign only Aleida (and Todd) under **Users and groups**.
-   The app also enforces `ADMIN_ALLOWLIST`, so this is a second lock.
+   The app also enforces `ADMIN_ALLOWLIST`, so this is a second lock. With assignment required
+   and nobody assigned, Microsoft refuses every sign-in with **AADSTS50105** ("not a direct
+   member of a group with access"); assigning the person fixes it. Assigning users needs
+   Cloud Application Administrator, Application Administrator, User Administrator or owner of
+   the app.
 6. Recommended: a Conditional Access policy requiring MFA for this app.
 
 **Todd's account is in a different tenant (dublowdigital.com).** Pick one:
