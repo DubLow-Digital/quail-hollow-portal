@@ -221,6 +221,26 @@ test('Take photo uses the in-browser camera with review before sending', async (
   );
 });
 
+test('the client can view a file they sent, straight from SharePoint', async () => {
+  await todd.goto(`/request/${ids.toddBank}`);
+  const view = todd.getByRole('link', { name: /^View TTest_BankStatement_2025_/ }).first();
+  await expect(view).toBeVisible();
+  const href = await view.getAttribute('href');
+  expect(href).toMatch(/^\/api\/uploads\/[0-9a-f-]{36}\/view$/);
+  // The portal only checks ownership and hands the browser SharePoint's own link.
+  const res = await todd.request.get(href!, { maxRedirects: 0 });
+  expect(res.status()).toBe(302);
+  expect(res.headers().location?.startsWith(`${GRAPH_MOCK}/content/`)).toBe(true);
+  expect(res.headers()['cache-control']).toContain('no-store');
+
+  // An upload that is not this client's (or does not exist) is never revealed.
+  const other = await todd.request.get('/api/uploads/00000000-0000-4000-8000-000000000000/view', {
+    maxRedirects: 0,
+  });
+  expect(other.status()).toBe(303);
+  expect(other.headers().location).toContain('/?file=missing');
+});
+
 test("a client cannot see or upload to another client's request", async () => {
   // The page: not found, not "forbidden", so it does not even confirm the request exists.
   await todd.goto(`/request/${ids.samDl}`);
