@@ -55,7 +55,8 @@ export function setClientSessionCookie(
 export async function completeFullSignIn(opts: {
   supabase: UserClient;
   user: SignInUser;
-  method: SignInMethod;
+  /** `phone_handoff`: a QR code from the person's own signed-in computer session. */
+  method: SignInMethod | 'phone_handoff';
   res: NextResponse;
   meta: RequestMeta;
 }): Promise<boolean> {
@@ -82,7 +83,8 @@ export async function completeFullSignIn(opts: {
     .from('client_users')
     .update({
       last_login_at: now,
-      last_login_method: method,
+      // A phone handoff keeps the method the person actually signed in with.
+      ...(method === 'phone_handoff' ? {} : { last_login_method: method }),
       ...(user.status === 'invited' ? { status: 'active' as const } : {}),
     })
     .eq('id', user.id);
