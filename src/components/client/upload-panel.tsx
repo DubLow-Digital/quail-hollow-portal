@@ -16,7 +16,7 @@ import { compressPhoto } from '@/lib/upload/image';
 import { buildPdf } from '@/lib/upload/pdf';
 import { Alert, Button, buttonClass } from '@/components/ui';
 import { ACTIVITY_EVENT } from './idle-logout';
-import { Scanner, type ScannedPage } from './scanner';
+import { Scanner, type CameraMode, type ScannedPage } from './scanner';
 
 type CaptureMethod = 'photo' | 'scan' | 'file';
 
@@ -82,7 +82,7 @@ export function UploadPanel({
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
+  const [camera, setCamera] = useState<CameraMode | null>(null);
 
   const acceptsImages = acceptedMime.includes('image/jpeg');
   const acceptsPdf = acceptedMime.includes('application/pdf');
@@ -133,6 +133,30 @@ export function UploadPanel({
     setPhase('ready');
   }
 
+  /** A JPEG from the in-app camera or the phone's camera app: sent as is, or as a PDF. */
+  async function readyPhotoJpeg(jpeg: Blob) {
+    if (acceptsImages) {
+      ready({
+        blob: jpeg,
+        mime: 'image/jpeg',
+        captureMethod: 'photo',
+        previews: [URL.createObjectURL(jpeg)],
+        label: 'Photo',
+      });
+      return;
+    }
+    const pdf = await buildPdf([{ bytes: new Uint8Array(await jpeg.arrayBuffer()), kind: 'jpeg' }]);
+    const blob = new Blob([pdf as BlobPart], { type: 'application/pdf' });
+    ready({
+      blob,
+      mime: 'application/pdf',
+      captureMethod: 'photo',
+      pageCount: 1,
+      previews: [URL.createObjectURL(jpeg)],
+      label: 'Photo (saved as PDF)',
+    });
+  }
+
   async function onPhoto(file: File | undefined) {
     if (photoInput.current) photoInput.current.value = '';
     if (!file) return;
@@ -140,27 +164,8 @@ export function UploadPanel({
     setPhase('preparing');
     try {
       const jpeg = await compressPhoto(file);
-      if (jpeg && acceptsImages) {
-        ready({
-          blob: jpeg,
-          mime: 'image/jpeg',
-          captureMethod: 'photo',
-          previews: [URL.createObjectURL(jpeg)],
-          label: 'Photo',
-        });
-      } else if (jpeg && acceptsPdf) {
-        const pdf = await buildPdf([
-          { bytes: new Uint8Array(await jpeg.arrayBuffer()), kind: 'jpeg' },
-        ]);
-        const blob = new Blob([pdf as BlobPart], { type: 'application/pdf' });
-        ready({
-          blob,
-          mime: 'application/pdf',
-          captureMethod: 'photo',
-          pageCount: 1,
-          previews: [URL.createObjectURL(jpeg)],
-          label: 'Photo (saved as PDF)',
-        });
+      if (jpeg && (acceptsImages || acceptsPdf)) {
+        await readyPhotoJpeg(jpeg);
       } else {
         // The browser could not process the photo (for example HEIC on some phones); send it as is.
         const mime = effectiveMime(file.type, file.name);
@@ -178,8 +183,22 @@ export function UploadPanel({
     }
   }
 
+  async function onCameraPhoto(pages: ScannedPage[]) {
+    setCamera(null);
+    const page = pages[0];
+    if (!page) return;
+    URL.revokeObjectURL(page.url);
+    setError(null);
+    setPhase('preparing');
+    try {
+      await readyPhotoJpeg(page.blob);
+    } catch {
+      showError('We could not read that photo. Please try again.');
+    }
+  }
+
   async function onScanned(pages: ScannedPage[]) {
-    setScanning(false);
+    setCamera(null);
     if (pages.length === 0) return;
     setError(null);
     setPhase('preparing');
@@ -405,7 +424,7 @@ export function UploadPanel({
       {acceptsImages || acceptsPdf ? (
         <button
           type="button"
-          onClick={() => photoInput.current?.click()}
+          onClick={() => setCamera('photo')}
           className="flex min-h-20 w-full items-center gap-4 rounded-2xl bg-brand-700 px-5 text-left text-white shadow-sm active:scale-[0.99]"
         >
           <span aria-hidden="true" className="text-3xl">
@@ -421,7 +440,7 @@ export function UploadPanel({
       {acceptsPdf ? (
         <button
           type="button"
-          onClick={() => setScanning(true)}
+          onClick={() => setCamera('scan')}
           className="flex min-h-20 w-full items-center gap-4 rounded-2xl bg-white px-5 text-left text-brand-900 shadow-sm ring-1 ring-brand-200 active:scale-[0.99]"
         >
           <span aria-hidden="true" className="text-3xl">
@@ -469,8 +488,24 @@ export function UploadPanel({
         className="hidden"
         onChange={(e) => onFile(e.target.files?.[0])}
       />
-      {scanning ? (
-        <Scanner onDone={(pages) => void onScanned(pages)} onCancel={() => setScanning(false)} />
+      {camera === 'scan' ? (
+        <Scanner
+          mode="scan"
+          onDone={(pages) => void onScanned(pages)}
+          onCancel={() => setCamera(null)}
+        />
+      ) : null}
+      {camera === 'photo' ? (
+        <Scanner
+          mode="photo"
+          onDone={(pages) => void onCameraPhoto(pages)}
+          onCancel={() => setCamera(null)}
+          onFallback={() => {
+            // Runs inside the click, so the browser allows opening the camera app.
+            photoInput.current?.click();
+            setCamera(null);
+          }}
+        />
       ) : null}
     </div>
   );

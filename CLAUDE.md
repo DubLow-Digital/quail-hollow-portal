@@ -114,7 +114,7 @@ Admin "Link existing folder" opens a folder browser that lists child folders fro
 5. Browser calls `POST /api/uploads/complete`. Server verifies the item via Graph, stores item ID and size, sets upload complete and request uploaded, writes audit log, emails Aleida.
 6. Client sees a success state; the checklist item turns green.
 
-Phase 1b (after core works): automatic page edge detection and perspective crop in Scan mode using `jscanify` (OpenCV.js), loaded only on the scan screen.
+Phase 1b (after core works): automatic page edge detection and perspective crop in Scan mode using `jscanify` (OpenCV.js), loaded only on the scan screen. (Amended Nov 17: built with Scanic instead, see section 16.)
 
 ## 10. Screens
 
@@ -203,3 +203,7 @@ AUTH_SECRET=
   (rules 6 and 7 still apply to it) is only for first-time setup and recovery. RLS reads only
   for sessions approved after a full sign-in (`private.full_sessions`). See
   `docs/client-sign-in-setup.md` and `docs/security-summary.md`.
+- Nov 17: **in-browser camera with document outline.** Take photo opens the portal's own camera
+  (the phone's camera app is the fallback) and both Take photo and Scan document show a live
+  outline and crop/straighten the page, using `scanic` (MIT, WebAssembly) instead of jscanify.
+  CSP adds `'wasm-unsafe-eval'` only. Sign-in page: form left, horse photo right.

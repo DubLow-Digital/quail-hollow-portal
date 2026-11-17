@@ -14,16 +14,9 @@ Entra) by name only, never their values.
 
 ## 2026-11-17
 
-### Changed
-
-- **Sign-in page redesign.** On a computer the sign-in form sits on the left half and the photo of a horse grazing under the oaks fills the right half; on a phone the photo shows as a banner above the form. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
-
-### Fixed
-
-- When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
-
 ### Added
 
+- **Document outline and auto-crop.** In Take photo and Scan document a green outline follows the page edges on the live camera view; when the picture is taken, the page is cropped and straightened automatically. In Take photo the client can switch to the whole, uncropped photo. Works offline on the phone; nothing is sent anywhere until the client taps Send. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Approved users.** A client can now have several people who sign in for them, such as an
   office manager or a spouse. Each person signs in with their own email and sees every
   request for that client. Aleida manages them on the client page ("People who can sign in":
@@ -39,6 +32,8 @@ Entra) by name only, never their values.
 
 ### Changed
 
+- **Take photo now uses the camera inside the portal.** It opens a live camera view in the browser instead of handing off to the phone's camera app (which is still offered if live camera access is blocked). After the picture is taken the client checks it and can retake it. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
+- **Sign-in page redesign.** On a computer the sign-in form sits on the left half and the photo of a horse grazing under the oaks fills the right half; on a phone the photo shows as a banner above the form. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - The emailed code is now only for first-time setup and recovery ("First time here? Forgot
   your password?"). It leads to a setup screen where the person creates a passkey, or a
   password plus an authenticator app. ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
@@ -50,6 +45,7 @@ Entra) by name only, never their values.
 
 ### Fixed
 
+- When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Sign out did nothing** for clients and admins. Because the portal sends
   `Referrer-Policy: no-referrer`, browsers label the Sign out form's origin as `null`, which
   the portal's cross-site check refused. It now accepts that only when the browser itself
@@ -61,6 +57,7 @@ Entra) by name only, never their values.
 
 ### Security
 
+- The content security policy now allows compiling WebAssembly (`'wasm-unsafe-eval'`) for the scanner's edge detector, which ships inside the portal's own code. JavaScript `eval` stays blocked and no outside scripts are loaded. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - A session started with only an emailed code or only a password cannot read any client data:
   the database honors only sessions the portal approved after a full sign-in.
   ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))

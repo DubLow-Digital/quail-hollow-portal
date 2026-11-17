@@ -193,6 +193,28 @@ test('a 40 MB PDF uploads in chunks and keeps the earlier file', async () => {
   expect(big?.size).toBe(40 * 1024 * 1024 + 22);
 });
 
+test('Take photo uses the in-browser camera with review before sending', async () => {
+  await todd.goto(`/request/${ids.toddBank}`);
+  await todd.getByRole('button', { name: 'Send another file for this item' }).click();
+  await todd.getByRole('button', { name: /Take photo/ }).click();
+  const camera = todd.getByRole('dialog', { name: 'Take photo' });
+  await camera.getByRole('button', { name: 'Take picture' }).click({ timeout: 20_000 });
+  // Review screen: the picture can be retaken before it is used.
+  await camera.getByRole('button', { name: 'Retake' }).click();
+  await camera.getByRole('button', { name: 'Take picture' }).click({ timeout: 20_000 });
+  await camera.getByRole('button', { name: 'Use photo' }).click();
+  await expect(camera).toBeHidden();
+  await expect(todd.getByText(/^Photo/)).toBeVisible();
+  await todd.getByRole('button', { name: 'Send to Quail Hollow' }).click();
+  await expect(todd.getByText(`Thank you! We received your ${BANK}.`)).toBeVisible({
+    timeout: 60_000,
+  });
+
+  const prefix = `Clients/Test, Todd/Individual/Income Documents/2025/TTest_BankStatement_2025_${firmDate()} 2.`;
+  const shot = (await mockFiles()).find((f) => f.path.startsWith(prefix));
+  expect(shot, 'camera photo filed next to the earlier scans').toBeTruthy();
+});
+
 test("a client cannot see or upload to another client's request", async () => {
   // The page: not found, not "forbidden", so it does not even confirm the request exists.
   await todd.goto(`/request/${ids.samDl}`);

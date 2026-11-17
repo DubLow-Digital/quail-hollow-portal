@@ -101,7 +101,11 @@ email or create a portal client, and every change received is recorded in the au
   The sign-in screen gives the same response whether or not an email is registered.
 - Web attacks: strict Content-Security-Policy with per-request nonces, HSTS, framing blocked
   (`X-Frame-Options: DENY`), no referrer leakage, camera allowed only on the portal itself,
-  same-origin checks on every state-changing request, httpOnly session cookies.
+  same-origin checks on every state-changing request, httpOnly session cookies. The policy
+  allows `'wasm-unsafe-eval'` (compiling WebAssembly only, never JavaScript `eval`) for the
+  document scanner's edge detector, which ships inside the portal's own code; no outside
+  scripts are loaded. Photos are processed on the client's phone and never leave it except
+  as the final upload.
 - Input validation on every server input (Zod schemas). Filenames and folder names are cleaned
   of unsafe characters and cannot escape the client's folder.
 - Dependencies are pinned to exact versions, and none were installed if published in the
