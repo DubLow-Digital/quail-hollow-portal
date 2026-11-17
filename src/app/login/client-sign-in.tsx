@@ -106,6 +106,12 @@ export function ClientSignIn({
       const r = await postJson('/api/auth/client/password', { email: email.trim(), password });
       if (r.status === 429)
         return setError('Too many attempts. Please wait a few minutes and try again.');
+      if (r.status === 409) {
+        // Password set, but setup was never finished: continue with an emailed code.
+        setPassword('');
+        setMode('code');
+        return;
+      }
       if (r.status !== 200)
         return setError(
           'That email and password do not match. Check them, or choose "Forgot your password?" below.',

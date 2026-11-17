@@ -12,6 +12,55 @@ effect (for example a typo in a comment) can carry the `no-changelog` label inst
 Operations entries record setup changes outside the code (Vercel settings, Supabase, Microsoft
 Entra) by name only, never their values.
 
+## 2026-11-17
+
+### Added
+
+- **Approved users.** A client can now have several people who sign in for them, such as an
+  office manager or a spouse. Each person signs in with their own email and sees every
+  request for that client. Aleida manages them on the client page ("People who can sign in":
+  add, invite, remove, reset sign-in, make main contact); the client's main contact manages
+  them on a new People page. Every current client becomes their own main contact.
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- **New ways for clients to sign in:** Continue with Google, Continue with Microsoft, a
+  passkey (Face ID, fingerprint or a phone), or email and password followed by a code from an
+  authenticator app. Signed-in clients can add a passkey or change their password under
+  "Sign-in options". ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- Uploads record which approved user sent them; Aleida's client page shows "sent by".
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+
+### Changed
+
+- The emailed code is now only for first-time setup and recovery ("First time here? Forgot
+  your password?"). It leads to a setup screen where the person creates a passkey, or a
+  password plus an authenticator app. ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- Invites go to each approved user with simple sign-in steps; "documents requested" and "redo
+  needed" emails go to everyone approved for the client.
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- The audit log records client actions by person, and shows approved-user changes.
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+
+### Security
+
+- A session started with only an emailed code or only a password cannot read any client data:
+  the database honors only sessions the portal approved after a full sign-in.
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- Google and Microsoft sign-in accept only a verified email belonging to an approved user;
+  Microsoft work accounts need a domain-verified email.
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- Recovery for someone who already set up a passkey or authenticator requires it first; a lost
+  device goes through Aleida's "Reset sign-in".
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+
+### Operations
+
+- Database update `supabase/update-2026-11-17.sql` must be run before this is merged. Supabase
+  passkeys and the Google and Microsoft sign-in apps are set up per
+  `docs/client-sign-in-setup.md`. New optional Vercel settings: `GOOGLE_OAUTH_CLIENT_ID`,
+  `GOOGLE_OAUTH_CLIENT_SECRET`, `MS_CLIENT_SIGNIN_CLIENT_ID`, `MS_CLIENT_SIGNIN_CLIENT_SECRET`.
+- Next.js advisory GHSA-mfr8-8qww-v76h (moderate) does not affect the portal (it does not use
+  `use cache`); upgrade to 16.4.6 on or after Nov 23.
+
 ## 2026-11-14
 
 ### Added
@@ -32,6 +81,9 @@ Entra) by name only, never their values.
 - The sync service (quail-hollow-sync) no longer invites clients to SuiteDash. When a client
   becomes Active in Notion and is not in this portal yet, Aleida gets a Notion task to add and
   invite them here. ([quail-hollow-sync#5](https://github.com/DubLow-Digital/quail-hollow-sync/pull/5))
+- Email turned on: a send-only Resend key for `notify.quailhollowaccounting.com` is stored as
+  `RESEND_API_KEY`, and `EMAIL_FROM` is set, then production was redeployed. Invites and
+  request emails had been failing because these were missing.
 - Found while testing: Microsoft sign-in to `/admin` is refused (AADSTS50105) until Todd and
   Aleida are assigned to the "Quail Hollow Portal Admin Sign-in" enterprise app in Aleida's
   Microsoft 365. No code change; steps in `docs/entra-setup.md` step 6.

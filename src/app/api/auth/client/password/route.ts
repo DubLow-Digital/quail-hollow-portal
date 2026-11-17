@@ -7,8 +7,6 @@ import { createUserSupabase } from '@/lib/supabase/server';
 import { audit } from '@/lib/audit';
 import { findSignInUserByEmail } from '@/lib/clients/users';
 import { readSignInSetup } from '@/lib/auth/client-mfa';
-import { setClientSessionCookie } from '@/lib/auth/client-session';
-import { SETUP_PATH } from '@/lib/auth/routes';
 
 const bodySchema = z.object({
   email: z.email().max(254),
@@ -16,10 +14,12 @@ const bodySchema = z.object({
 });
 
 const GENERIC = { error: 'invalid_credentials' };
+const MIN_RESPONSE_MS = 600;
 
 /**
  * Step 1 of password sign-in. A correct password alone never signs anyone in: the next step
- * is an authenticator code. If no authenticator is set up yet, the person finishes setup.
+ * is an authenticator code. If no authenticator is set up yet, the person must finish setup
+ * through an emailed code; the password alone opens nothing.
  */
 export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
+  const started = Date.now();
   const email = input.email.trim().toLowerCase();
   const meta = metaFromHeaders(request.headers);
   if (
@@ -58,15 +59,24 @@ export async function POST(request: NextRequest) {
       metadata: { method: 'password', reason: user ? 'bad_password' : 'unknown' },
       meta,
     });
+    await pad(started);
     return NextResponse.json(GENERIC, { status: 400 });
   }
 
   const setup = await readSignInSetup(supabase);
   if (setup.totpFactorIds.length === 0) {
-    // Password set but no authenticator yet: finish setup before anything else.
-    const res = NextResponse.json({ ok: true, redirect: SETUP_PATH });
-    setClientSessionCookie(res, data.user.id, 'setup');
-    return res;
+    // A password with no authenticator behind it (setup was never finished) is not enough to
+    // continue: the person finishes setup through an emailed code instead.
+    await supabase.auth.signOut({ scope: 'local' });
+    await pad(started);
+    return NextResponse.json({ error: 'setup_incomplete' }, { status: 409 });
   }
+  await pad(started);
   return NextResponse.json({ ok: true, step: 'totp', factorId: setup.totpFactorIds[0] });
+}
+
+/** Similar response times whether or not the email is known. */
+async function pad(started: number) {
+  const wait = MIN_RESPONSE_MS + Math.floor(Math.random() * 200) - (Date.now() - started);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
 }

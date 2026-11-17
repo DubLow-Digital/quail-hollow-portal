@@ -7,7 +7,8 @@ Qualified Individual should review. Last updated November 13, 2026 (Phase 1 buil
 
 ## 1. What the portal does
 
-Clients sign in with a one-time code sent to their email, see the documents Quail Hollow has
+Clients (and the people they approve) sign in with Google, Microsoft, a passkey, or a password
+plus an authenticator app, see the documents Quail Hollow has
 requested, and send each one by photo, multi-page scan, or file. Files go directly from the
 client's browser into that client's folder in Quail Hollow's own Microsoft 365 SharePoint.
 Aleida (and DubLow for support) manage clients and requests from an admin area that requires a
@@ -23,6 +24,8 @@ Microsoft work account.
 | Upload records: final filename, size, type, page count, SharePoint item ID    | Supabase Postgres                         | Metadata only.                                                                             |
 | Audit log: who did what, when, IP address, browser type                       | Supabase Postgres                         | IDs and event types only; append-only.                                                     |
 | Sign-in codes                                                                 | Supabase Auth                             | Expire after 10 minutes; single use.                                                       |
+| Approved users: name, email, role, last sign-in time and method               | Supabase Postgres                         | Visible to the same client's approved users (not to other clients).                        |
+| Passwords, authenticator keys, passkey public keys                            | Supabase Auth                             | Passwords hashed (bcrypt). Passkeys store only a public key. Never in portal tables.       |
 | Links to the client's Notion record and Lead Alchemist contact (IDs only)     | Supabase Postgres                         | Admin-only columns; clients cannot read them.                                              |
 | Client name, email, phone, client type and portal status (copies)             | Notion CRM and Lead Alchemist             | Sent through the quail-hollow-sync service. No documents, SSNs, notes or upload details.   |
 | Secrets (API keys, app credentials)                                           | Vercel encrypted environment variables    | Never in source code.                                                                      |
@@ -50,11 +53,25 @@ location from phone pictures.
   recorded in the audit log. Downloads go straight from SharePoint to the admin's browser through
   Microsoft's own short-lived link; the portal never handles the file.
 
-- **Clients** sign in with a 6-digit code emailed to the address on file. Public sign-up is
-  disabled; only Aleida can create a client. Each client can read only their own record, their
-  own requests and their own uploads. This is enforced in the database itself (row level
-  security) and covered by automated tests that prove a client cannot read another client's
-  data. Clients cannot change any record directly.
+- **Approved users:** each client can have several people who may sign in for them (the
+  owner, an office manager, a spouse). Aleida adds and removes them; the client's main contact
+  can also add and remove people for their own client. Each person signs in with their own
+  email and sees every request for that client. Uploads record who sent them. Public sign-up
+  is disabled. Removing a person deletes their sign-in account, which ends every session.
+- **Clients sign in with one of:** Google or Microsoft (their own account, so their provider's
+  MFA applies; only a verified email that belongs to an approved user is accepted, and
+  Microsoft work accounts must have a domain-verified email); a passkey (Face ID, fingerprint
+  or a phone: phishing-resistant and multi-factor by itself); or a password (at least 12
+  characters) plus a code from an authenticator app. A password alone never signs anyone in.
+- **Emailed one-time codes** are only for first-time setup and recovery. A code alone opens
+  the setup screen and nothing else: the database refuses that session's token (row level
+  security only honors sessions the portal approved after a full sign-in), so it cannot read
+  any client record, request or upload. Recovery for someone who already set up a passkey or
+  authenticator requires that factor first; if it is lost, Aleida resets their sign-in.
+- **Data access:** each signed-in person can read only their own client's record, requests and
+  uploads. This is enforced in the database itself (row level security) and covered by
+  automated tests that prove a person cannot read another client's data. Nobody can change a
+  record directly.
 - **Sessions** end after 30 minutes without activity or 12 hours in total, whichever comes first.
   The page also signs itself out after 30 idle minutes.
 - **Admins** sign in with Microsoft (Aleida's Entra ID tenant). Access requires being on an
@@ -119,9 +136,11 @@ WISP and review them annually.
 
 1. **MFA for staff:** require MFA for Aleida and DubLow on the admin sign-in app with an Entra
    Conditional Access policy (or Security Defaults). Recommended before go-live.
-2. **Client sign-in strength:** clients use an emailed one-time code (possession of their email
-   account). Decide whether this meets Quail Hollow's risk assessment for client access, or
-   whether a second factor (for example an SMS code) should be added in a later phase.
+2. **Client sign-in strength:** every full client sign-in is multi-factor or delegated to the
+   client's own Google or Microsoft account (passkey; password plus authenticator app; or
+   Google / Microsoft). First-time setup relies on the invited email address, like any invite.
+   Confirm this meets the WISP's MFA requirement (16 CFR 314.4(c)(5)) for client access, and
+   whether to require clients who use Google or Microsoft to have MFA turned on there.
 3. **Retention:** how long upload metadata and audit logs are kept (open decision). Documents in
    SharePoint follow Quail Hollow's existing retention policy.
 4. **Social Security cards:** whether to collect them as images or replace them later with a
@@ -132,7 +151,8 @@ WISP and review them annually.
    both are listed as service providers in the WISP, and that Lead Alchemist workflows do not
    send marketing to portal clients (they are tagged `client portal`).
 7. **Incident response:** add the portal to the WISP's incident response plan. To cut off access
-   quickly: archive the client (blocks sign-in), remove an admin from `ADMIN_ALLOWLIST`, or
+   quickly: archive the client (blocks everyone approved for it), remove or reset one person on
+   the client's People card, remove an admin from `ADMIN_ALLOWLIST`, or
    disable the "Quail Hollow Client Portal" app in Entra (stops all uploads). Removing
    `SYNC_HUB_SECRET` from the portal turns the Notion and Lead Alchemist sync off.
 

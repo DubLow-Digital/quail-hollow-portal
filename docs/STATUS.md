@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: November 14, 2026. What changed and when is in [CHANGELOG.md](../CHANGELOG.md)._
+_Last updated: November 17, 2026. What changed and when is in [CHANGELOG.md](../CHANGELOG.md)._
 
 ## Where things stand
 
@@ -25,13 +25,22 @@ Added after the Phase 1 brief, at Todd's request (Nov 13): the Files page, Notio
 Alchemist sync through quail-hollow-sync, Connect SharePoint, the backup emailed-code admin
 sign-in, and the full end-to-end CI test. Details in the change log.
 
+Added Nov 17 (in review): **approved users and new client sign-in**. Each client can have
+several people who sign in (owner, office manager, spouse); Aleida and the client's main
+contact manage them. Clients sign in with Google, Microsoft, a passkey, or a password plus an
+authenticator app; an emailed code is now only for first-time setup and recovery, and a code
+alone cannot read any client data. Setup steps: `docs/client-sign-in-setup.md`.
+
 ### Tests
 
 - `npm test`: unit tests; `npm run test:db`: RLS and database tests on Postgres 16;
   `npm run test:e2e`: browser smoke tests on iPhone and Android viewports. All run in CI.
 - CI job "Full end-to-end" runs the production build against real Supabase Auth, PostgREST and
-  Postgres and a SharePoint stand-in, on a phone viewport: emailed-code sign-in, a client sees
-  only their own requests, license photo filed as `TTest_DriversLicense_<date>.jpg`, a 3-page
+  Postgres and a SharePoint and Google/Microsoft stand-in, on a phone viewport: password +
+  authenticator setup by emailed code, Google sign-in for an office manager added by the main
+  contact, unapproved and unverified emails refused, passkey setup and sign-in (virtual
+  authenticator), code-only and password-only sessions read nothing, recovery, removal, a
+  client sees only their own requests, license photo filed as `TTest_DriversLicense_<date>.jpg`, a 3-page
   scan arrives as one PDF, a 40 MB upload, client isolation (page, API and direct database),
   accept, file browser, audit trail, Connect SharePoint, and no upload links or codes stored.
 - Lighthouse mobile, `/login` and `/admin/signin`: performance 99, accessibility 100.
@@ -41,16 +50,21 @@ sign-in, and the full end-to-end CI test. Details in the change log.
 Configured in Vercel (names only): Supabase (integration), `AUTH_SECRET`, `ADMIN_ALLOWLIST`,
 `APP_BASE_URL`, `MS_TENANT_ID`, `MS_PORTAL_CLIENT_ID` / `_SECRET`, `MS_ADMIN_CLIENT_ID` /
 `_SECRET`, `SP_SITE_ID`, `SP_DRIVE_ID`, `SP_CLIENT_ROOT_FOLDER_ID`, `SP_HOSTNAME`,
-`SYNC_HUB_URL`, `SYNC_HUB_SECRET`, `FILES_DEMO`, `ADMIN_EMAIL_LOGIN`.
+`SYNC_HUB_URL`, `SYNC_HUB_SECRET`, `FILES_DEMO`, `ADMIN_EMAIL_LOGIN`, `RESEND_API_KEY`,
+`EMAIL_FROM` (Nov 14; sending domain `notify.quailhollowaccounting.com` is verified in Resend,
+and Supabase already sends sign-in codes through Resend).
 
 Still to do:
+
+0. **Before merging the approved users / sign-in pull request:** run
+   `supabase/update-2026-11-17.sql` once in the Supabase SQL editor. Then follow
+   `docs/client-sign-in-setup.md`: turn on passkeys in Supabase (relying party = the portal
+   domain), and create the Google and Microsoft sign-in apps.
 
 1. **Admin Microsoft sign-in:** assign Todd and Aleida to the "Quail Hollow Portal Admin
    Sign-in" enterprise app in Aleida's tenant (Users and groups). Until then Microsoft refuses
    the sign-in with AADSTS50105. The emailed-code sign-in works meanwhile.
-2. **Email:** set `RESEND_API_KEY` and `EMAIL_FROM` in Vercel and verify the sending domain in
-   Resend. Until then invites, request, redo and new-upload emails are not sent (sign-in codes
-   are unaffected).
+2. **Email:** done Nov 14. Send one invite to confirm delivery.
 3. **SharePoint check:** confirm the Files page lists the real client folders and run
    `npm run graph:check`. If the app sees no site, a Global Admin runs the one-time grant shown
    on `/admin/sharepoint`.
@@ -81,6 +95,14 @@ Still to do:
 9. **Sync defaults:** new Notion records from the portal get Lead Source "Client Portal" and
    Notion's default Client Status. OK?
 
+10. **Passkey domain:** passkeys are tied to the portal's domain. Decide the final domain
+    before clients create passkeys, or they re-create them after a domain change.
+11. **One client per email:** an email can sign in for only one client. A spouse who is also a
+    client in her own right needs a different email for one of them. OK for now?
+12. **Next.js:** a moderate advisory (GHSA-mfr8-8qww-v76h) affects 16.4.3, but only the
+    `use cache` / `unstable_cache` feature, which the portal does not use. Upgrade to 16.4.6
+    on or after Nov 23 (the 14-day rule for new packages).
+
 ## Decisions made during the build
 
 - Admin sign-in uses MSAL directly (auth code + PKCE) instead of Auth.js, avoiding a beta
@@ -90,6 +112,11 @@ Still to do:
 - Photos are re-encoded in the browser (~2400 px JPEG), which also strips GPS metadata.
 - The sign-in code email is the Supabase "Magic Link" template showing `{{ .Token }}`.
 - Rate limits live in Postgres (no extra paid service).
+- Nov 17, at Todd's request (changes the brief's "email one-time code, no passwords"): approved
+  users per client; sign-in with Google, Microsoft, a passkey, or a password plus authenticator
+  app; emailed codes only for setup and recovery. Google and Microsoft are handled by the
+  portal itself (OpenID Connect, no extra service), and a session can read client data only
+  after the portal approves it following a full sign-in (`private.full_sessions`).
 - The SharePoint location can be chosen in the portal (`portal_settings`); Vercel `SP_*`
   settings take precedence when set.
 

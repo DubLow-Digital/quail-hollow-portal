@@ -192,3 +192,14 @@ AUTH_SECRET=
 - Which SharePoint site and library holds client folders, and whether existing folders get linked or re-created in the standard structure.
 - Whether Social Security cards are collected as images or replaced by a secure typed field later.
 - Retention: how long `uploads` metadata and audit logs are kept.
+
+## 16. Amendments since the brief (decided by Todd)
+
+- Nov 13: admin Files page, Notion and Lead Alchemist sync (through quail-hollow-sync),
+  Connect SharePoint, backup emailed-code admin sign-in (`ADMIN_EMAIL_LOGIN`).
+- Nov 17: **approved users** (`client_users`): several people may sign in for one client and
+  see everything for it; Aleida and the client's main contact manage them. **Client sign-in**
+  is Google, Microsoft, a passkey, or a password plus an authenticator app; the emailed code
+  (rules 6 and 7 still apply to it) is only for first-time setup and recovery. RLS reads only
+  for sessions approved after a full sign-in (`private.full_sessions`). See
+  `docs/client-sign-in-setup.md` and `docs/security-summary.md`.
