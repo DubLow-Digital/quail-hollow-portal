@@ -16,7 +16,7 @@ Entra) by name only, never their values.
 
 ### Fixed
 
-- When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. (pull request link to follow)
+- When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 
 ### Added
 
