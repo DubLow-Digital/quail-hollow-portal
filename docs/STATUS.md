@@ -56,6 +56,9 @@ and Supabase already sends sign-in codes through Resend).
 
 Still to do:
 
+- **Before merging the front-and-back pull request (#6):** run
+  `supabase/update-2026-11-17-front-back.sql` once in the Supabase SQL editor.
+
 0. **Before merging the approved users / sign-in pull request:** run
    `supabase/update-2026-11-17.sql` once in the Supabase SQL editor. Then follow
    `docs/client-sign-in-setup.md`: turn on passkeys in Supabase (relying party = the portal

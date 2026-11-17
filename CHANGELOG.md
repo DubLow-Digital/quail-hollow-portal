@@ -74,7 +74,7 @@ Entra) by name only, never their values.
 
 ### Operations
 
-- Supabase: run migration `20261117000002_document_front_back.sql` in the SQL editor (adds the front-and-back setting). ([#6](https://github.com/DubLow-Digital/quail-hollow-portal/pull/6))
+- Database update `supabase/update-2026-11-17-front-back.sql` (the front-and-back setting) must be run in the Supabase SQL editor before this is merged. ([#6](https://github.com/DubLow-Digital/quail-hollow-portal/pull/6))
 - Database update `supabase/update-2026-11-17.sql` must be run before this is merged. Supabase
   passkeys and the Google and Microsoft sign-in apps are set up per
   `docs/client-sign-in-setup.md`. New optional Vercel settings: `GOOGLE_OAUTH_CLIENT_ID`,
