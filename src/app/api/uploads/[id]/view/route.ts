@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getClient } from '@/lib/auth/client';
 import { UUID_RE } from '@/lib/actions';
 import { fileSource } from '@/lib/files/source';
+import { serviceSupabase } from '@/lib/supabase/admin';
 import { ExplorerAccessError } from '@/lib/files/explorer-types';
 import { GraphError } from '@/lib/graph/client';
 import { metaFromHeaders } from '@/lib/request-meta';
@@ -10,7 +11,7 @@ import { log } from '@/lib/log';
 
 /**
  * Lets a signed-in client open a file they (or someone approved for their client) sent.
- * Row level security limits the lookup to this client's own uploads. The portal never
+ * Row level security confirms the upload is this client's own. The portal never
  * touches the file: it redirects the browser to SharePoint's own short-lived link for that
  * one file. The link is never logged or stored, and no folder is shared with anyone.
  */
@@ -21,14 +22,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   if (!UUID_RE.test(id)) return notFound(request);
 
-  const { data: upload } = await ctx.supabase
+  // Ownership through row level security, as the signed-in client.
+  const { data: owned } = await ctx.supabase
     .from('uploads')
-    .select('id, request_id, status, sharepoint_item_id')
+    .select('id, request_id, status')
     .eq('id', id)
     .maybeSingle();
-  if (!upload || upload.status !== 'complete' || !upload.sharepoint_item_id) {
-    return notFound(request);
-  }
+  if (!owned || owned.status !== 'complete') return notFound(request);
+
+  // The SharePoint item ID is not readable by clients, so it is read server-side, again
+  // limited to this client.
+  const { data: upload } = await serviceSupabase()
+    .from('uploads')
+    .select('id, request_id, sharepoint_item_id')
+    .eq('id', owned.id)
+    .eq('client_id', ctx.client.id)
+    .eq('status', 'complete')
+    .maybeSingle();
+  if (!upload?.sharepoint_item_id) return notFound(request);
 
   const source = await fileSource();
   if (!source) return unavailable(request, upload.request_id);
