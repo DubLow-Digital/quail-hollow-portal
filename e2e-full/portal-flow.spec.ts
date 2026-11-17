@@ -194,8 +194,8 @@ test('a 40 MB PDF uploads in chunks and keeps the earlier file', async () => {
 });
 
 test('Take photo uses the in-browser camera with review before sending', async () => {
+  // A freshly opened request page shows the upload choices straight away.
   await todd.goto(`/request/${ids.toddBank}`);
-  await todd.getByRole('button', { name: 'Send another file for this item' }).click();
   await todd.getByRole('button', { name: /Take photo/ }).click();
   const camera = todd.getByRole('dialog', { name: 'Take photo' });
   await camera.getByRole('button', { name: 'Take picture' }).click({ timeout: 20_000 });
