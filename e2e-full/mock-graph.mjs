@@ -234,6 +234,7 @@ const server = createServer(async (req, res) => {
       const body = await readBody(req);
       if (!range) return send(res, 400, { error: { code: 'invalidRange' } }, CORS);
       const [start, end, total] = range.slice(1).map(Number);
+      if (session.size === null) session.size = total;
       if (start !== session.received || end - start + 1 !== body.length || total !== session.size) {
         return send(
           res,
@@ -348,12 +349,14 @@ const server = createServer(async (req, res) => {
         const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
         if (body.item?.['@microsoft.graph.conflictBehavior'] !== 'rename')
           return graphError(res, 400, 'invalidRequest');
+        // Like SharePoint: fileSize is a OneDrive Personal-only property and is rejected.
+        if (body.item && 'fileSize' in body.item) return graphError(res, 400, 'invalidRequest');
         const id = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
         sessions.set(id, {
           id,
           parent: base.id,
           name: segments.join('/'),
-          size: Number(body.item.fileSize),
+          size: null, // set from the first Content-Range, as SharePoint does
           received: 0,
           chunks: [],
         });

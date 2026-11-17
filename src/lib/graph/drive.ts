@@ -151,7 +151,6 @@ export interface UploadSession {
 export async function createUploadSession(
   parentFolderId: string,
   filename: string,
-  fileSize: number,
 ): Promise<UploadSession> {
   const session = await graphRequest<UploadSession>(
     drivePath(
@@ -160,7 +159,9 @@ export async function createUploadSession(
     {
       method: 'POST',
       body: {
-        item: { '@microsoft.graph.conflictBehavior': 'rename', name: filename, fileSize },
+        // Only conflictBehavior and name. SharePoint rejects `fileSize` (a OneDrive Personal
+        // quota hint) with 400 invalidRequest, which broke every portal upload.
+        item: { '@microsoft.graph.conflictBehavior': 'rename', name: filename },
         deferCommit: false,
       },
     },

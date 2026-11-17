@@ -26,6 +26,9 @@ const ALLOWED_KEYS = new Set([
   'pageCount',
   'mime',
   'route',
+  'step',
+  'captureMethod',
+  'folderDepth',
 ]);
 
 export function sanitizeFields(
