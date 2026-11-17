@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     const folder = await ensureFolderPath(client.sharepoint_folder_id, segments);
     folderId = folder.id;
     step = 'session';
-    const session = await createUploadSession(folderId, filename, input.size);
+    const session = await createUploadSession(folderId, filename);
     uploadUrl = session.uploadUrl;
     expiresAt = session.expirationDateTime;
   } catch (err) {

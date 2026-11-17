@@ -46,6 +46,7 @@ Entra) by name only, never their values.
 
 ### Fixed
 
+- **Uploads to SharePoint failed for every file.** Starting an upload sent SharePoint a file-size hint that only personal OneDrive accepts, so SharePoint refused it ("That did not work" in the portal). The hint is removed and uploads go through again. Upload failures now also record which step failed. ([#4](https://github.com/DubLow-Digital/quail-hollow-portal/pull/4))
 - When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Sign out did nothing** for clients and admins. Because the portal sends
   `Referrer-Policy: no-referrer`, browsers label the Sign out form's origin as `null`, which

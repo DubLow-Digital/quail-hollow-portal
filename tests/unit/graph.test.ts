@@ -63,7 +63,7 @@ describe('createUploadSession', () => {
         expirationDateTime: '2026-11-13T00:00:00Z',
       });
     const { createUploadSession } = await import('@/lib/graph/drive');
-    const session = await createUploadSession('FOLDER 1', 'JSmith_W2_2025_2026-11-12.pdf', 1234);
+    const session = await createUploadSession('FOLDER 1', 'JSmith_W2_2025_2026-11-12.pdf');
     expect(session.uploadUrl).toBe('https://example.sharepoint.com/upload/abc');
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toBe(
@@ -74,7 +74,6 @@ describe('createUploadSession', () => {
       item: {
         '@microsoft.graph.conflictBehavior': 'rename',
         name: 'JSmith_W2_2025_2026-11-12.pdf',
-        fileSize: 1234,
       },
       deferCommit: false,
     });
@@ -84,7 +83,7 @@ describe('createUploadSession', () => {
     responder = () =>
       json(200, { uploadUrl: 'https://evil.example.com/upload', expirationDateTime: 'x' });
     const { createUploadSession } = await import('@/lib/graph/drive');
-    await expect(createUploadSession('F', 'a.pdf', 1)).rejects.toThrow(/host/);
+    await expect(createUploadSession('F', 'a.pdf')).rejects.toThrow(/host/);
   });
 });
 

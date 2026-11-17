@@ -89,11 +89,7 @@ describe('Graph stand-in', () => {
       'TTest_DriversLicense_2026-11-13.pdf',
       'TTest_DriversLicense_2026-11-13 1.pdf',
     ]) {
-      const session = await createUploadSession(
-        id.id,
-        'TTest_DriversLicense_2026-11-13.pdf',
-        bytes.length,
-      );
+      const session = await createUploadSession(id.id, 'TTest_DriversLicense_2026-11-13.pdf');
       expect(session.uploadUrl.startsWith(`${ORIGIN}/upload/`)).toBe(true);
       const item = await uploadInChunks(session.uploadUrl, new Blob([bytes]), {
         chunkSize: 320 * 1024,
