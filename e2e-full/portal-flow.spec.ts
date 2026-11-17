@@ -507,7 +507,8 @@ test('no file bytes, sign-in codes or upload links are stored', async () => {
   const uploads = await adminRest<
     { size_bytes: number; sharepoint_item_id: string; status: string }[]
   >(`uploads?select=size_bytes,sharepoint_item_id,status&client_id=eq.${ids.todd}`);
-  expect(uploads.filter((u) => u.status === 'complete')).toHaveLength(3);
+  // License photo, 3-page scan, 40 MB PDF and the in-browser camera photo.
+  expect(uploads.filter((u) => u.status === 'complete')).toHaveLength(4);
   expect(
     uploads.every((u) => u.status !== 'complete' || (u.sharepoint_item_id && u.size_bytes > 0)),
   ).toBe(true);
