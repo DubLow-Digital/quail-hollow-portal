@@ -196,6 +196,7 @@ test('a 40 MB PDF uploads in chunks and keeps the earlier file', async () => {
 test('Take photo uses the in-browser camera with review before sending', async () => {
   // A freshly opened request page shows the upload choices straight away.
   await todd.goto(`/request/${ids.toddBank}`);
+  const before = new Set((await mockFiles()).map((f) => f.path));
   await todd.getByRole('button', { name: /Take photo/ }).click();
   const camera = todd.getByRole('dialog', { name: 'Take photo' });
   await camera.getByRole('button', { name: 'Take picture' }).click({ timeout: 20_000 });
@@ -210,9 +211,14 @@ test('Take photo uses the in-browser camera with review before sending', async (
     timeout: 60_000,
   });
 
-  const prefix = `Clients/Test, Todd/Individual/Income Documents/2025/TTest_BankStatement_2025_${firmDate()} 2.`;
-  const shot = (await mockFiles()).find((f) => f.path.startsWith(prefix));
-  expect(shot, 'camera photo filed next to the earlier scans').toBeTruthy();
+  // Exactly one new file, named the firm's way, in the same folder as the earlier scans.
+  const added = (await mockFiles()).filter((f) => !before.has(f.path));
+  expect(added.map((f) => f.path)).toHaveLength(1);
+  expect(added[0]!.path).toMatch(
+    new RegExp(
+      `^Clients/Test, Todd/Individual/Income Documents/2025/TTest_BankStatement_2025_${firmDate()}( \\d+)?\\.(jpg|pdf)$`,
+    ),
+  );
 });
 
 test("a client cannot see or upload to another client's request", async () => {
