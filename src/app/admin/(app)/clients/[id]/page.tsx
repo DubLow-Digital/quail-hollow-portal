@@ -56,11 +56,11 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; imported?: string }>;
+  searchParams: Promise<{ created?: string; imported?: string; person_removed?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
-  const { created, imported } = await searchParams;
+  const { created, imported, person_removed: personRemoved } = await searchParams;
   if (!UUID_RE.test(id)) notFound();
 
   const db = serviceSupabase();
@@ -121,6 +121,7 @@ export default async function ClientDetailPage({
           their SharePoint folder, request documents, then send the invite.
         </Alert>
       ) : null}
+      {personRemoved ? <Alert tone="success">Removed. They can no longer sign in.</Alert> : null}
       {archived ? (
         <Alert tone="warning" title="Archived">
           This client cannot sign in or see any requests.

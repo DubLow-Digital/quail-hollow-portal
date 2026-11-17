@@ -456,6 +456,7 @@ test('Aleida removes the office manager, who is signed out and cannot sign in ag
   admin.once('dialog', (d) => void d.accept());
   await row.getByRole('button', { name: 'Remove' }).click();
   await expect(admin.getByText('Removed. They can no longer sign in.')).toBeVisible();
+  await expect(admin.locator('li', { hasText: OLIVIA.email })).toHaveCount(0);
 
   await olivia.goto('/');
   await olivia.waitForURL((u) => u.pathname === '/login');

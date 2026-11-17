@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/admin';
 import { type ActionState, UUID_RE, invalid, str } from '@/lib/actions';
 import { audit } from '@/lib/audit';
@@ -91,8 +92,8 @@ export async function removePersonAction(_prev: ActionState, form: FormData): Pr
     targetId: user.id,
     meta: await requestMeta(),
   });
-  revalidatePath(`/admin/clients/${user.client_id}`);
-  return { ok: true, message: 'Removed. They can no longer sign in.' };
+  // Their row disappears, so confirm on the page itself.
+  redirect(`/admin/clients/${user.client_id}?person_removed=1`);
 }
 
 export async function resetPersonAction(_prev: ActionState, form: FormData): Promise<ActionState> {

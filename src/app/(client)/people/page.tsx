@@ -4,13 +4,19 @@ import { requireClient } from '@/lib/auth/client';
 import { listApprovedUsers } from '@/lib/clients/manage-users';
 import { PeopleList } from '@/components/people/people-list';
 import { AddPersonForm } from '@/components/people/add-person-form';
+import { Alert } from '@/components/ui';
 import { addPersonAction, invitePersonAction, removePersonAction } from './actions';
 
 export const metadata = { title: 'People' };
 
 /** The main contact sees and manages who else may sign in and send documents for them. */
-export default async function PeoplePage() {
+export default async function PeoplePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ removed?: string }>;
+}) {
   const ctx = await requireClient();
+  const { removed } = await searchParams;
   if (ctx.user.role !== 'primary') redirect('/');
   const people = await listApprovedUsers(ctx.client.id);
 
@@ -28,6 +34,8 @@ export default async function PeoplePage() {
           person signs in with their own email and sees every document we have asked you for.
         </p>
       </div>
+
+      {removed ? <Alert tone="success">Removed. They can no longer sign in.</Alert> : null}
 
       <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <PeopleList
