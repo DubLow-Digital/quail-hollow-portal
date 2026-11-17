@@ -16,6 +16,7 @@ Entra) by name only, never their values.
 
 ### Added
 
+- **"Needs front and back" on document types.** Each document type has a new checkbox. When it is on, clients see "(front and back)" after the name, the request asks for both sides, and Scan document asks for the front, then the back. When it is off, front and back are never mentioned. The Driver's License keeps asking for both sides (its name is now just "Driver's License"); untick the box to stop. ([#6](https://github.com/DubLow-Digital/quail-hollow-portal/pull/6))
 - **Clients can view the files they sent.** Each file under "You have sent" on a request has a View button that opens that one file straight from SharePoint, using a short-lived link SharePoint makes for that file. The portal checks the file belongs to the signed-in client first. No folder is shared, clients still never see SharePoint, and every view is recorded in the audit log. ([#5](https://github.com/DubLow-Digital/quail-hollow-portal/pull/5))
 - **Document outline and auto-crop.** In Take photo and Scan document a green outline follows the page edges on the live camera view; when the picture is taken, the page is cropped and straightened automatically. In Take photo the client can switch to the whole, uncropped photo. Works offline on the phone; nothing is sent anywhere until the client taps Send. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Approved users.** A client can now have several people who sign in for them, such as an
@@ -73,6 +74,7 @@ Entra) by name only, never their values.
 
 ### Operations
 
+- Supabase: run migration `20261117000002_document_front_back.sql` in the SQL editor (adds the front-and-back setting). ([#6](https://github.com/DubLow-Digital/quail-hollow-portal/pull/6))
 - Database update `supabase/update-2026-11-17.sql` must be run before this is merged. Supabase
   passkeys and the Google and Microsoft sign-in apps are set up per
   `docs/client-sign-in-setup.md`. New optional Vercel settings: `GOOGLE_OAUTH_CLIENT_ID`,
