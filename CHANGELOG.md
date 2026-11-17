@@ -14,6 +14,10 @@ Entra) by name only, never their values.
 
 ## 2026-11-17
 
+### Fixed
+
+- When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. (pull request link to follow)
+
 ### Added
 
 - **Approved users.** A client can now have several people who sign in for them, such as an
