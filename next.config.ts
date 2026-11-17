@@ -7,6 +7,12 @@ const brandLogo = existsSync(join(process.cwd(), 'public', 'brand', 'logo-horizo
   ? '/brand/logo-horizontal.png'
   : '';
 
+// Sign-in page photo (the horse in the field), when added to public/brand.
+const loginPhoto =
+  ['login-photo.webp', 'login-photo.jpg']
+    .map((f) => (existsSync(join(process.cwd(), 'public', 'brand', f)) ? `/brand/${f}` : ''))
+    .find(Boolean) ?? '';
+
 /**
  * Static security headers applied to every response. The Content-Security-Policy is
  * per-request (nonce based) and is set in `src/proxy.ts`.
@@ -29,7 +35,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  env: { NEXT_PUBLIC_BRAND_LOGO: brandLogo },
+  env: { NEXT_PUBLIC_BRAND_LOGO: brandLogo, NEXT_PUBLIC_LOGIN_PHOTO: loginPhoto },
   reactStrictMode: true,
   serverExternalPackages: ['@azure/msal-node'],
   experimental: {

@@ -14,6 +14,10 @@ Entra) by name only, never their values.
 
 ## 2026-11-17
 
+### Changed
+
+- **Sign-in page redesign.** On a computer the sign-in form sits on the left half and the photo of a horse grazing under the oaks fills the right half; on a phone the photo shows as a banner above the form. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
+
 ### Fixed
 
 - When an upload cannot start because SharePoint refuses it, the server log now says which step failed (finding the client's folder or opening the upload) and SharePoint's error code, so the cause can be found and fixed. No names, file paths or links are logged. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
