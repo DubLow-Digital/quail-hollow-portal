@@ -99,3 +99,34 @@ describe('PII guards', () => {
     ).toEqual({ uploadId: 'u1', statusCode: 500 });
   });
 });
+
+describe('email header logo', () => {
+  const sample = () =>
+    redoNeededEmail({ firstName: 'Test', documentName: 'W-2', note: 'Blurry', portalUrl });
+
+  it("shows Quail Hollow's real logo from the portal when the portal address is known", () => {
+    const before = process.env.APP_BASE_URL;
+    process.env.APP_BASE_URL = 'https://portal.example.test/';
+    try {
+      expect(sample().html).toContain(
+        '<img src="https://portal.example.test/brand/logo-email.png"',
+      );
+      expect(sample().html).toContain('alt="Quail Hollow Accounting Services LLC"');
+    } finally {
+      if (before === undefined) delete process.env.APP_BASE_URL;
+      else process.env.APP_BASE_URL = before;
+    }
+  });
+
+  it('falls back to a text header without an https portal address', () => {
+    const before = process.env.APP_BASE_URL;
+    process.env.APP_BASE_URL = 'http://localhost:3000';
+    try {
+      expect(sample().html).not.toContain('<img');
+      expect(sample().html).toContain('Accounting Services LLC');
+    } finally {
+      if (before === undefined) delete process.env.APP_BASE_URL;
+      else process.env.APP_BASE_URL = before;
+    }
+  });
+});

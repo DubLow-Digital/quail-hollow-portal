@@ -174,7 +174,8 @@ function deny(
 export const config = {
   matcher: [
     {
-      source: '/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|brand/).*)',
+      source:
+        '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|robots.txt|brand/).*)',
     },
   ],
 };

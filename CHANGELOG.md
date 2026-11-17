@@ -32,6 +32,7 @@ Entra) by name only, never their values.
 
 ### Changed
 
+- **Quail Hollow's real logo everywhere.** The portal header, sign-in pages, browser tab and home-screen icons, and emails now use the logo files supplied by Quail Hollow instead of the drawn stand-in. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Take photo now uses the camera inside the portal.** It opens a live camera view in the browser instead of handing off to the phone's camera app (which is still offered if live camera access is blocked). After the picture is taken the client checks it and can retake it. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Sign-in page redesign.** On a computer the sign-in form sits on the left half and the photo of a horse grazing under the oaks fills the right half; on a phone the photo shows as a banner above the form. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - The emailed code is now only for first-time setup and recovery ("First time here? Forgot

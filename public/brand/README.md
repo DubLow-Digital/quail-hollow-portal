@@ -1,13 +1,15 @@
 # Brand assets
 
-Drop Quail Hollow's logo files here (PNG or SVG, transparent background preferred):
+These are Quail Hollow's **real logo files**, supplied by the client (Nov 17, 2026). Always use
+them; never redraw, recolor or substitute the logo.
 
-| File                                    | Used for                                                                                                                            |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `logo-horizontal.png`                   | Header on client and sign-in pages (nest + wordmark side by side)                                                                   |
-| `nest.png`                              | Square mark (favicon-style uses, small spaces)                                                                                      |
-| `login-photo.webp` or `login-photo.jpg` | Right half of the sign-in page (horse in the field); a banner above the form on phones. Landscape, about 1600 px wide, under 400 KB |
+| File                  | Used for                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| `logo-horizontal.png` | Header on client, sign-in and admin pages (nest circle + wordmark)                     |
+| `nest.png`            | The nest circle on its own (small spaces)                                              |
+| `logo-square.png`     | Stacked logo (nest above the wordmark), for square spaces                              |
+| `logo-email.png`      | Header image in emails (on white, 560 px wide, shown at 280 px)                        |
+| `login-photo.webp`    | Right half of the sign-in page (horse in the field); a banner above the form on phones |
 
-When `logo-horizontal.png` is present at build time, the portal shows it instead of the
-built-in text wordmark (see `next.config.ts`, `NEXT_PUBLIC_BRAND_LOGO`). Keep files small
-(under 200 KB) so the header loads quickly on phones.
+The browser tab and home-screen icons (`src/app/icon.png`, `src/app/apple-icon.png`) are cut
+from the same nest circle. Keep files small so pages load quickly on phones.

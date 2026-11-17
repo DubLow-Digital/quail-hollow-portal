@@ -2,11 +2,6 @@ import type { NextConfig } from 'next';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Use the real logo when it has been added to public/brand (see public/brand/README.md).
-const brandLogo = existsSync(join(process.cwd(), 'public', 'brand', 'logo-horizontal.png'))
-  ? '/brand/logo-horizontal.png'
-  : '';
-
 // Sign-in page photo (the horse in the field), when added to public/brand.
 const loginPhoto =
   ['login-photo.webp', 'login-photo.jpg']
@@ -35,7 +30,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  env: { NEXT_PUBLIC_BRAND_LOGO: brandLogo, NEXT_PUBLIC_LOGIN_PHOTO: loginPhoto },
+  env: { NEXT_PUBLIC_LOGIN_PHOTO: loginPhoto },
   reactStrictMode: true,
   serverExternalPackages: ['@azure/msal-node'],
   experimental: {

@@ -207,3 +207,6 @@ AUTH_SECRET=
   (the phone's camera app is the fallback) and both Take photo and Scan document show a live
   outline and crop/straighten the page, using `scanic` (MIT, WebAssembly) instead of jscanify.
   CSP adds `'wasm-unsafe-eval'` only. Sign-in page: form left, horse photo right.
+- Nov 17: **always use Quail Hollow's real logo files** (`public/brand/`: `logo-horizontal.png`,
+  `nest.png`, `logo-square.png`, `logo-email.png`; icons in `src/app/icon.png` and
+  `apple-icon.png`). Never redraw, recolor or substitute the logo. Todd's rule.

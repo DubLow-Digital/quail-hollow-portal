@@ -22,6 +22,16 @@ interface Rendered {
   text: string;
 }
 
+/** The real Quail Hollow logo (served by the portal); a text header if no base URL is known. */
+function emailLogo(serif: string): string {
+  const base = (process.env.APP_BASE_URL ?? '').trim().replace(/\/+$/, '');
+  if (/^https:\/\/[a-z0-9.-]+$/i.test(base)) {
+    return `<img src="${escapeHtml(base)}/brand/logo-email.png" width="280" height="82" alt="Quail Hollow Accounting Services LLC" style="display:block;border:0;width:280px;max-width:100%;height:auto;">`;
+  }
+  return `<div style="font-family:${serif};font-size:24px;letter-spacing:3px;text-transform:uppercase;color:#483829;">Quail Hollow</div>
+<div style="font-family:${serif};font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#483829;margin-top:6px;">Accounting Services LLC</div>`;
+}
+
 function layout(title: string, bodyHtml: string): string {
   const serif = "Georgia,'Times New Roman',serif";
   return `<!doctype html>
@@ -30,8 +40,7 @@ function layout(title: string, bodyHtml: string): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;padding:24px 12px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #ece2d2;">
 <tr><td align="center" style="padding:22px 24px 16px;border-bottom:1px solid #c3ab7f;">
-<div style="font-family:${serif};font-size:24px;letter-spacing:3px;text-transform:uppercase;color:#483829;">Quail Hollow</div>
-<div style="font-family:${serif};font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#483829;margin-top:6px;">Accounting Services LLC</div>
+${emailLogo(serif)}
 </td></tr>
 <tr><td style="padding:24px;font-size:16px;line-height:1.5;">${bodyHtml}</td></tr>
 <tr><td style="padding:16px 24px;border-top:1px solid #ece2d2;font-size:13px;color:#6f5840;">Questions? Call our office at ${OFFICE_PHONE}.<br>Please do not reply with documents by email. Use the secure portal instead.</td></tr>
