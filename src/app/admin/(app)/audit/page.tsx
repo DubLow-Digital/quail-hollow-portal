@@ -12,6 +12,7 @@ const ACTOR_TYPES = ['client', 'admin', 'system'] as const;
 const ACTION_GROUPS = [
   { value: 'admin.', label: 'Admin sign-ins' },
   { value: 'client.', label: 'Client sign-ins and changes' },
+  { value: 'client_user.', label: 'Approved users' },
   { value: 'request.', label: 'Requests' },
   { value: 'upload.', label: 'Uploads' },
   { value: 'document_type.', label: 'Document types' },
@@ -65,18 +66,24 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   const ids = new Set<string>();
   for (const r of rows ?? []) {
     if (r.actor_id) ids.add(r.actor_id);
-    if (r.target_id && (r.target_type === 'client' || r.target_type === 'admin'))
+    if (
+      r.target_id &&
+      (r.target_type === 'client' || r.target_type === 'admin' || r.target_type === 'client_user')
+    )
       ids.add(r.target_id);
   }
   const idList = [...ids];
-  const [{ data: clients }, { data: admins }] = idList.length
+  const [{ data: clients }, { data: admins }, { data: people }] = idList.length
     ? await Promise.all([
         db.from('clients').select('id, first_name, last_name').in('id', idList),
         db.from('admins').select('id, display_name, email').in('id', idList),
+        // Client actions are recorded by approved user (the owner, a spouse, an office manager).
+        db.from('client_users').select('id, first_name, last_name, email').in('id', idList),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
   const names = new Map<string, string>();
   for (const c of clients ?? []) names.set(c.id, `${c.first_name} ${c.last_name}`);
+  for (const p of people ?? []) names.set(p.id, `${p.first_name} ${p.last_name}`.trim() || p.email);
   for (const a of admins ?? []) names.set(a.id, a.display_name || a.email);
 
   const nextCursor = rows && rows.length === PAGE_SIZE ? rows[rows.length - 1]!.id : null;

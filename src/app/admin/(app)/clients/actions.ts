@@ -7,7 +7,8 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/admin';
 import { audit } from '@/lib/audit';
 import { invalid, str, strs, UUID_RE, type ActionState } from '@/lib/actions';
-import { ensureAuthUser, setSignInBlocked, updateAuthEmail } from '@/lib/clients/auth-user';
+import { updateAuthEmail } from '@/lib/clients/auth-user';
+import { addApprovedUser, setClientSignInBlocked } from '@/lib/clients/manage-users';
 import {
   FolderLinkError,
   createStandardClientFolder,
@@ -63,23 +64,41 @@ export async function createClientAction(_prev: ActionState, form: FormData): Pr
     .maybeSingle();
   if (dupe)
     return { ok: false, fieldErrors: { email: 'A client with this email already exists.' } };
-
-  let authUserId: string;
-  try {
-    authUserId = await ensureAuthUser(parsed.data.email);
-  } catch (err) {
-    log.error('client.auth_user_failed', { reason: (err as Error).name });
-    return { ok: false, message: 'Could not create the sign-in account. Please try again.' };
-  }
+  const { data: taken } = await db
+    .from('client_users')
+    .select('id')
+    .eq('email', parsed.data.email)
+    .neq('status', 'removed')
+    .maybeSingle();
+  if (taken)
+    return {
+      ok: false,
+      fieldErrors: { email: 'This email can already sign in for another client.' },
+    };
 
   const { data, error } = await db
     .from('clients')
-    .insert({ ...parsed.data, auth_user_id: authUserId, status: 'invited' })
+    .insert({ ...parsed.data, status: 'invited' })
     .select('id')
     .single();
   if (error || !data) {
     log.error('client.insert_failed', { reason: error?.code ?? 'unknown' });
     return { ok: false, message: 'Could not save the client. Please try again.' };
+  }
+  // The client themselves is the first approved user and the main contact.
+  const added = await addApprovedUser({
+    clientId: data.id,
+    person: {
+      first_name: parsed.data.first_name,
+      last_name: parsed.data.last_name,
+      email: parsed.data.email,
+    },
+    role: 'primary',
+    addedByAdmin: admin.aid,
+  });
+  if (!added.ok) {
+    await db.from('clients').delete().eq('id', data.id);
+    return { ok: false, message: 'Could not create the sign-in account. Please try again.' };
   }
 
   await audit({
@@ -106,7 +125,7 @@ export async function updateClientAction(_prev: ActionState, form: FormData): Pr
 
   const { data: current } = await db
     .from('clients')
-    .select('id, email, auth_user_id')
+    .select('id, email')
     .eq('id', clientId)
     .maybeSingle();
   if (!current) return { ok: false, message: 'Unknown client.' };
@@ -120,10 +139,33 @@ export async function updateClientAction(_prev: ActionState, form: FormData): Pr
       .maybeSingle();
     if (dupe)
       return { ok: false, fieldErrors: { email: 'Another client already uses this email.' } };
-    try {
-      if (current.auth_user_id) await updateAuthEmail(current.auth_user_id, parsed.data.email);
-    } catch {
-      return { ok: false, message: 'Could not update the sign-in email. Please try again.' };
+    // The approved user who signs in with the old email moves to the new one.
+    const { data: person } = await db
+      .from('client_users')
+      .select('id, auth_user_id')
+      .eq('client_id', clientId)
+      .eq('email', current.email)
+      .neq('status', 'removed')
+      .maybeSingle();
+    if (person) {
+      const { data: taken } = await db
+        .from('client_users')
+        .select('id')
+        .eq('email', parsed.data.email)
+        .neq('status', 'removed')
+        .neq('id', person.id)
+        .maybeSingle();
+      if (taken)
+        return {
+          ok: false,
+          fieldErrors: { email: 'This email can already sign in to the portal.' },
+        };
+      try {
+        if (person.auth_user_id) await updateAuthEmail(person.auth_user_id, parsed.data.email);
+      } catch {
+        return { ok: false, message: 'Could not update the sign-in email. Please try again.' };
+      }
+      await db.from('client_users').update({ email: parsed.data.email }).eq('id', person.id);
     }
   }
 
@@ -152,13 +194,13 @@ export async function setArchivedAction(_prev: ActionState, form: FormData): Pro
   const db = serviceSupabase();
   const { data: current } = await db
     .from('clients')
-    .select('auth_user_id, last_login_at')
+    .select('last_login_at')
     .eq('id', clientId)
     .maybeSingle();
   if (!current) return { ok: false, message: 'Unknown client.' };
 
   try {
-    if (current.auth_user_id) await setSignInBlocked(current.auth_user_id, archive);
+    await setClientSignInBlocked(clientId, archive);
   } catch {
     return { ok: false, message: 'Could not update sign-in access. Please try again.' };
   }
@@ -178,7 +220,9 @@ export async function setArchivedAction(_prev: ActionState, form: FormData): Pro
   revalidatePath(`/admin/clients/${clientId}`);
   return {
     ok: true,
-    message: archive ? 'Client archived. They can no longer sign in.' : 'Client restored.',
+    message: archive
+      ? 'Client archived. Nobody approved for this client can sign in.'
+      : 'Client restored.',
   };
 }
 

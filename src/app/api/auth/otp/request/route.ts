@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { assertSameOrigin } from '@/lib/security/origin';
 import { hitLimits, LIMITS } from '@/lib/security/rate-limit';
 import { metaFromHeaders } from '@/lib/request-meta';
-import { serviceSupabase } from '@/lib/supabase/admin';
+import { findSignInUserByEmail } from '@/lib/clients/users';
 import { supabaseEnv } from '@/lib/env';
 import { audit } from '@/lib/audit';
 import { log } from '@/lib/log';
@@ -47,13 +47,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const { data: client } = await serviceSupabase()
-    .from('clients')
-    .select('id, status, auth_user_id')
-    .eq('email', email)
-    .maybeSingle();
+  const user = await findSignInUserByEmail(email);
 
-  if (client && client.status !== 'archived' && client.auth_user_id) {
+  if (user) {
     const env = supabaseEnv();
     const anon = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -69,10 +65,10 @@ export async function POST(request: NextRequest) {
       });
     await audit({
       actorType: 'client',
-      actorId: client.id,
+      actorId: user.id,
       action: 'client.otp_requested',
       targetType: 'client',
-      targetId: client.id,
+      targetId: user.client_id,
       metadata: { sent: !error },
       meta,
     });

@@ -20,6 +20,16 @@ import { syncConfigured } from '@/lib/env';
 import { SYNC_ERROR_MESSAGES } from '@/lib/sync/hub';
 import { notionPageUrl } from '@/lib/sync/protocol';
 import { ClientForm } from '../client-form';
+import { listApprovedUsers } from '@/lib/clients/manage-users';
+import { PeopleList } from '@/components/people/people-list';
+import { AddPersonForm } from '@/components/people/add-person-form';
+import {
+  addPersonAction,
+  invitePersonAction,
+  makePrimaryAction,
+  removePersonAction,
+  resetPersonAction,
+} from '../people-actions';
 import { syncClientAction } from '../sync-actions';
 import { FolderBrowser } from '../folder-browser';
 import { AssignRequestsForm } from '../assign-requests-form';
@@ -46,21 +56,21 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; imported?: string }>;
+  searchParams: Promise<{ created?: string; imported?: string; person_removed?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
-  const { created, imported } = await searchParams;
+  const { created, imported, person_removed: personRemoved } = await searchParams;
   if (!UUID_RE.test(id)) notFound();
 
   const db = serviceSupabase();
-  const [{ data: client }, { data: requests }, { data: types }, { data: bundles }] =
+  const [{ data: client }, { data: requests }, { data: types }, { data: bundles }, people] =
     await Promise.all([
       db.from('clients').select('*').eq('id', id).maybeSingle(),
       db
         .from('document_requests')
         .select(
-          'id, status, tax_year, business_name, note_to_client, redo_note, requested_at, due_date, status_changed_at, document_types(name, sort_order), uploads(id, final_filename, size_bytes, page_count, capture_method, status, uploaded_at, started_at, sharepoint_web_url, failure_reason)',
+          'id, status, tax_year, business_name, note_to_client, redo_note, requested_at, due_date, status_changed_at, document_types(name, sort_order), uploads(id, final_filename, size_bytes, page_count, capture_method, status, uploaded_at, started_at, sharepoint_web_url, failure_reason, sender:client_users(first_name, last_name))',
         )
         .eq('client_id', id)
         .order('requested_at', { ascending: false }),
@@ -74,6 +84,7 @@ export default async function ClientDetailPage({
         .from('request_bundles')
         .select('id, name, request_bundle_items(document_type_id)')
         .order('name'),
+      listApprovedUsers(id),
     ]);
   if (!client) notFound();
 
@@ -110,6 +121,7 @@ export default async function ClientDetailPage({
           their SharePoint folder, request documents, then send the invite.
         </Alert>
       ) : null}
+      {personRemoved ? <Alert tone="success">Removed. They can no longer sign in.</Alert> : null}
       {archived ? (
         <Alert tone="warning" title="Archived">
           This client cannot sign in or see any requests.
@@ -261,13 +273,47 @@ export default async function ClientDetailPage({
       </div>
 
       <Card>
+        <h2 className="text-lg font-semibold text-brand-900">People who can sign in</h2>
+        <p className="mt-1 text-sm text-neutral-600">
+          The client and anyone they rely on, such as an office manager or a spouse. Each person
+          signs in on their own and sees every request for this client. The main contact can also
+          add and remove people from inside the portal.
+        </p>
+        <div className="mt-3">
+          {people.length ? (
+            <PeopleList
+              people={people}
+              actions={{
+                invite: invitePersonAction,
+                remove: removePersonAction,
+                reset: resetPersonAction,
+                makePrimary: makePrimaryAction,
+              }}
+            />
+          ) : (
+            <EmptyState title="Nobody can sign in for this client yet" />
+          )}
+        </div>
+        {!archived ? (
+          <details className="mt-4 rounded-xl border border-neutral-200 p-4">
+            <summary className="cursor-pointer font-medium text-brand-900">Add someone</summary>
+            <div className="mt-3">
+              <AddPersonForm action={addPersonAction} hidden={{ client_id: client.id }} />
+            </div>
+          </details>
+        ) : null}
+      </Card>
+
+      <Card>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-brand-900">Document requests</h2>
           {!archived ? (
             <ActionButtonForm
               action={sendInviteAction}
               hidden={{ client_id: client.id }}
-              label={client.invited_at ? 'Resend invite' : 'Send invite'}
+              label={
+                client.invited_at ? 'Resend invite to main contact' : 'Send invite to main contact'
+              }
               pendingLabel="Sending…"
             />
           ) : null}
@@ -329,6 +375,9 @@ export default async function ClientDetailPage({
                               {u.page_count && u.page_count > 1 ? ` · ${u.page_count} pages` : ''}
                               {` · ${u.capture_method}`}
                               {u.uploaded_at ? ` · ${formatDateTime(u.uploaded_at)}` : ''}
+                              {u.sender
+                                ? ` · sent by ${`${u.sender.first_name} ${u.sender.last_name}`.trim()}`
+                                : ''}
                             </span>
                           </span>
                           <span className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
+import { SSO_PROVIDERS, type SsoProvider } from '@/lib/auth/oidc-claims';
 
 /**
  * Server environment, validated lazily per feature group so that a missing variable
@@ -172,6 +173,29 @@ export function syncConfigured(): boolean {
  */
 export function adminEmailLoginEnabled(): boolean {
   return process.env.ADMIN_EMAIL_LOGIN === 'true';
+}
+
+/**
+ * Client sign-in with Google or Microsoft (optional; see docs/client-sso-setup.md). A provider
+ * is offered only when both its client ID and secret are set.
+ */
+export function clientSsoCredentials(
+  provider: SsoProvider,
+  env: Record<string, string | undefined> = process.env,
+): { clientId: string; clientSecret: string } | null {
+  const [id, secret] =
+    provider === 'google'
+      ? [env.GOOGLE_OAUTH_CLIENT_ID, env.GOOGLE_OAUTH_CLIENT_SECRET]
+      : [env.MS_CLIENT_SIGNIN_CLIENT_ID, env.MS_CLIENT_SIGNIN_CLIENT_SECRET];
+  const clientId = id?.trim();
+  const clientSecret = secret?.trim();
+  return clientId && clientSecret ? { clientId, clientSecret } : null;
+}
+
+export function clientSsoProviders(
+  env: Record<string, string | undefined> = process.env,
+): SsoProvider[] {
+  return SSO_PROVIDERS.filter((p) => clientSsoCredentials(p, env) !== null);
 }
 
 /** Test helper: forget cached values after mutating process.env. */

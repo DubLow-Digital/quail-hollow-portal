@@ -47,9 +47,18 @@ export type AuditAction =
   | 'sync.received'
   | 'sync.rejected'
   | 'client.imported'
-  | 'settings.sharepoint_connected';
+  | 'settings.sharepoint_connected'
+  | 'client.setup_started'
+  | 'client.setup_completed'
+  | 'client.mfa_failed'
+  | 'client_user.added'
+  | 'client_user.removed'
+  | 'client_user.invited'
+  | 'client_user.made_primary'
+  | 'client_user.sign_in_reset';
 
-export type AuditTarget = 'client' | 'admin' | 'request' | 'upload' | 'document_type' | 'bundle';
+export type AuditTarget =
+  'client' | 'client_user' | 'admin' | 'request' | 'upload' | 'document_type' | 'bundle';
 
 type MetaValue = string | number | boolean | null;
 

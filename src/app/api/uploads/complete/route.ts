@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       .eq('id', upload.id);
     await audit({
       actorType: 'client',
-      actorId: ctx.client.id,
+      actorId: ctx.user.id,
       action: 'upload.rejected',
       targetType: 'upload',
       targetId: upload.id,
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
 
   await audit({
     actorType: 'client',
-    actorId: ctx.client.id,
+    actorId: ctx.user.id,
     action: 'upload.completed',
     targetType: 'upload',
     targetId: upload.id,

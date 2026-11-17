@@ -12,6 +12,9 @@ const USER_A = '00000000-0000-4000-8000-0000000000a1';
 const USER_B = '00000000-0000-4000-8000-0000000000b2';
 const USER_ARCHIVED = '00000000-0000-4000-8000-0000000000c3';
 const USER_NO_CLIENT = '00000000-0000-4000-8000-0000000000d4';
+// A second approved user for Test Client (for example an office manager), and one removed.
+const USER_A_MEMBER = '00000000-0000-4000-8000-0000000000a5';
+const USER_A_REMOVED = '00000000-0000-4000-8000-0000000000a6';
 
 let client: pg.Client;
 let drop: () => Promise<void>;
@@ -23,8 +26,9 @@ beforeAll(async () => {
   await client.query(
     `insert into auth.users (id, email) values
        ($1, 'test.client@example.test'), ($2, 'pat.example@example.test'),
-       ($3, 'archie.archived@example.test'), ($4, 'nobody@example.test')`,
-    [USER_A, USER_B, USER_ARCHIVED, USER_NO_CLIENT],
+       ($3, 'archie.archived@example.test'), ($4, 'nobody@example.test'),
+       ($5, 'office.manager@example.test'), ($6, 'former.helper@example.test')`,
+    [USER_A, USER_B, USER_ARCHIVED, USER_NO_CLIENT, USER_A_MEMBER, USER_A_REMOVED],
   );
 
   const admin = await client.query(
@@ -41,6 +45,25 @@ beforeAll(async () => {
     [USER_A, USER_B, USER_ARCHIVED],
   );
   for (const row of clients.rows) ids[`client_${row.first_name}`] = row.id;
+
+  await client.query(
+    `insert into client_users (client_id, email, first_name, last_name, role, status, auth_user_id)
+     values ($1, 'test.client@example.test', 'Test', 'Client', 'primary', 'active', $4),
+            ($1, 'office.manager@example.test', 'Office', 'Manager', 'member', 'active', $7),
+            ($1, 'former.helper@example.test', 'Former', 'Helper', 'member', 'removed', $8),
+            ($2, 'pat.example@example.test', 'Pat', 'Example', 'primary', 'active', $5),
+            ($3, 'archie.archived@example.test', 'Archie', 'Archived', 'primary', 'active', $6)`,
+    [
+      ids.client_Test,
+      ids.client_Pat,
+      ids.client_Archie,
+      USER_A,
+      USER_B,
+      USER_ARCHIVED,
+      USER_A_MEMBER,
+      USER_A_REMOVED,
+    ],
+  );
 
   const types = await client.query(`select id, slug_for_filename from document_types`);
   for (const row of types.rows) ids[`type_${row.slug_for_filename}`] = row.id;
@@ -157,6 +180,91 @@ describe('clients', () => {
       await errorCode(q, `delete from clients where id = $1`, [ids.client_Pat]),
     ]);
     expect(codes).toEqual(['42501', '42501', '42501']);
+  });
+});
+
+describe('approved users and full sign-in', () => {
+  it('a second approved user sees the same client and requests as the owner', async () => {
+    const result = await asRole(client, 'authenticated', USER_A_MEMBER, async (q) => ({
+      clients: (await q('select id from clients')).rows.map((r) => r.id),
+      requests: (await q('select id from document_requests order by id')).rows.map((r) => r.id),
+    }));
+    expect(result.clients).toEqual([ids.client_Test]);
+    expect(new Set(result.requests)).toEqual(new Set([ids.req_A1, ids.req_A2]));
+  });
+
+  it('a removed user sees nothing', async () => {
+    const result = await asRole(client, 'authenticated', USER_A_REMOVED, async (q) => ({
+      clients: (await q('select id from clients')).rows,
+      requests: (await q('select id from document_requests')).rows,
+      users: (await q('select id from client_users')).rows,
+    }));
+    expect(result).toEqual({ clients: [], requests: [], users: [] });
+  });
+
+  it('a session that has not finished signing in (code or password only) reads nothing', async () => {
+    const result = await asRole(
+      client,
+      'authenticated',
+      USER_A,
+      async (q) => ({
+        clients: (await q('select id from clients')).rows,
+        requests: (await q('select id from document_requests')).rows,
+        uploads: (await q('select id from uploads')).rows,
+        users: (await q('select id from client_users')).rows,
+      }),
+      { fullSignIn: false },
+    );
+    expect(result).toEqual({ clients: [], requests: [], uploads: [], users: [] });
+  });
+
+  it("approved users see their own client's people, not other clients' or removed ones", async () => {
+    const rows = await asRole(client, 'authenticated', USER_A, (q) =>
+      q('select email, role from client_users order by email'),
+    );
+    expect(rows.rows).toEqual([
+      { email: 'office.manager@example.test', role: 'member' },
+      { email: 'test.client@example.test', role: 'primary' },
+    ]);
+  });
+
+  it('approved users cannot read sign-in links or change the list of people', async () => {
+    const codes = await asRole(client, 'authenticated', USER_A, async (q) => [
+      await errorCode(q, 'select auth_user_id from client_users'),
+      await errorCode(q, 'select added_by_admin from client_users'),
+      await errorCode(
+        q,
+        `insert into client_users (client_id, email) values ($1, 'intruder@example.test')`,
+        [ids.client_Test],
+      ),
+      await errorCode(q, `update client_users set role = 'primary' where auth_user_id = $1`, [
+        USER_A_MEMBER,
+      ]),
+      await errorCode(q, `delete from client_users where client_id = $1`, [ids.client_Test]),
+    ]);
+    expect(codes).toEqual(['42501', '42501', '42501', '42501', '42501']);
+  });
+
+  it('only the service role can approve or revoke sessions', async () => {
+    const codes = await asRole(client, 'authenticated', USER_A, async (q) => [
+      await errorCode(q, `select portal_approve_session(gen_random_uuid(), $1, 'x', 600)`, [
+        USER_A,
+      ]),
+      await errorCode(q, `select portal_revoke_session(gen_random_uuid())`),
+      await errorCode(q, `select * from private.full_sessions`),
+    ]);
+    expect(codes).toEqual(['42501', '42501', '42501']);
+  });
+
+  it('an email belongs to one current approved user', async () => {
+    const code = await asRole(client, 'service_role', null, (q) =>
+      errorCode(
+        q,
+        `insert into client_users (client_id, email) values ($1, 'office.manager@example.test')`,
+        [ids.client_Pat],
+      ),
+    );
+    expect(code).toBe('23505');
   });
 });
 

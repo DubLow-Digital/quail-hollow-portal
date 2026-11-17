@@ -14,6 +14,12 @@
 //   GET    /content/{id}       file bytes (the "download URL")
 //   GET    /__test/files       every file with its folder path (for assertions)
 //   GET    /__test/health
+//
+// It also stands in for Google and Microsoft sign-in (when the portal has E2E_OAUTH_MOCK_URL):
+//   GET    /oauth/{google|microsoft}/authorize   checks the request, redirects back with a code
+//   POST   /oauth/{google|microsoft}/token       checks code, secret and PKCE; returns an ID token
+//   POST   /__test/oauth-identity                who the next sign-in is: { provider, claims }
+import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.PORT || 4010);
@@ -84,6 +90,90 @@ const MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', pn
 
 const sessions = new Map();
 
+// ---- sign-in stand-in ----
+const OAUTH_CLIENTS = {
+  google: {
+    id: process.env.GOOGLE_OAUTH_CLIENT_ID,
+    secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  },
+  microsoft: {
+    id: process.env.MS_CLIENT_SIGNIN_CLIENT_ID,
+    secret: process.env.MS_CLIENT_SIGNIN_CLIENT_SECRET,
+  },
+};
+const nextIdentity = { google: null, microsoft: null };
+const oauthCodes = new Map();
+const b64url = (v) => Buffer.from(v).toString('base64url');
+function idToken(provider, claims, clientId, nonce) {
+  const iat = Math.floor(Date.now() / 1000);
+  const base =
+    provider === 'google'
+      ? { iss: 'https://accounts.google.com', sub: `g-${claims.email}` }
+      : {
+          iss: `https://login.microsoftonline.com/${claims.tid}/v2.0`,
+          oid: `00000000-0000-4000-8000-${createHash('sha256').update(claims.email).digest('hex').slice(0, 12)}`,
+          sub: `ms-${claims.email}`,
+        };
+  const payload = { ...base, aud: clientId, nonce, iat, exp: iat + 600, ...claims };
+  return `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${b64url(JSON.stringify(payload))}.e2e`;
+}
+async function oauth(req, res, url) {
+  const [, , provider, step] = url.pathname.split('/');
+  const client = OAUTH_CLIENTS[provider];
+  if (!client?.id) return send(res, 404, { error: 'unknown_provider' });
+  if (step === 'authorize' && req.method === 'GET') {
+    const q = url.searchParams;
+    const required = ['redirect_uri', 'state', 'nonce', 'code_challenge'];
+    if (
+      q.get('client_id') !== client.id ||
+      q.get('response_type') !== 'code' ||
+      q.get('code_challenge_method') !== 'S256' ||
+      !q.get('scope')?.split(' ').includes('openid') ||
+      required.some((k) => !q.get(k))
+    )
+      return send(res, 400, { error: 'invalid_request' });
+    const back = new URL(q.get('redirect_uri'));
+    const identity = nextIdentity[provider];
+    if (!identity) {
+      back.searchParams.set('error', 'access_denied');
+    } else {
+      const code = randomBytes(16).toString('hex');
+      oauthCodes.set(code, {
+        provider,
+        identity,
+        nonce: q.get('nonce'),
+        challenge: q.get('code_challenge'),
+        redirectUri: q.get('redirect_uri'),
+      });
+      back.searchParams.set('code', code);
+    }
+    back.searchParams.set('state', q.get('state'));
+    res.writeHead(302, { Location: back.toString() });
+    return res.end();
+  }
+  if (step === 'token' && req.method === 'POST') {
+    const form = new URLSearchParams((await readBody(req)).toString('utf8'));
+    const grant = oauthCodes.get(form.get('code') || '');
+    oauthCodes.delete(form.get('code') || '');
+    const verifier = form.get('code_verifier') || '';
+    if (
+      !grant ||
+      grant.provider !== provider ||
+      form.get('client_id') !== client.id ||
+      form.get('client_secret') !== client.secret ||
+      form.get('redirect_uri') !== grant.redirectUri ||
+      createHash('sha256').update(verifier).digest('base64url') !== grant.challenge
+    )
+      return send(res, 400, { error: 'invalid_grant' });
+    return send(res, 200, {
+      token_type: 'Bearer',
+      access_token: 'e2e-access-token',
+      id_token: idToken(provider, grant.identity, client.id, grant.nonce),
+    });
+  }
+  return send(res, 405, { error: 'method_not_allowed' });
+}
+
 function send(res, status, body, headers = {}) {
   const payload = body === undefined ? '' : JSON.stringify(body);
   res.writeHead(status, { 'Content-Type': 'application/json', ...headers });
@@ -106,6 +196,13 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   try {
     if (path === '/__test/health') return send(res, 200, { ok: true });
+    if (path === '/__test/oauth-identity' && req.method === 'POST') {
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      if (!(body.provider in nextIdentity)) return send(res, 400, { error: 'unknown_provider' });
+      nextIdentity[body.provider] = body.claims ?? null;
+      return send(res, 200, { ok: true });
+    }
+    if (path.startsWith('/oauth/')) return await oauth(req, res, url);
     if (path === '/__test/files') {
       const files = [...items.values()]
         .filter((i) => !i.folder)

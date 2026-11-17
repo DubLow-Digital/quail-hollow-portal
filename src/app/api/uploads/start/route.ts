@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
       page_count: input.pageCount ?? null,
       capture_method: input.captureMethod,
       status: 'pending',
+      uploaded_by: ctx.user.id,
     })
     .select('id')
     .single();
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
 
   await audit({
     actorType: 'client',
-    actorId: ctx.client.id,
+    actorId: ctx.user.id,
     action: 'upload.started',
     targetType: 'upload',
     targetId: upload.id,

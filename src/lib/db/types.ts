@@ -11,6 +11,9 @@ export type UploadStatus = 'pending' | 'complete' | 'failed';
 export type ActorType = 'client' | 'admin' | 'system';
 export type EntityType = 'individual' | 'schedule_c' | '1120s' | '1065' | 'other';
 export type CaptureMethod = 'photo' | 'scan' | 'file';
+export type ClientUserRole = 'primary' | 'member';
+export type ClientUserStatus = 'invited' | 'active' | 'removed';
+export type SignInMethod = 'google' | 'microsoft' | 'passkey' | 'password';
 export type SyncState = 'off' | 'pending' | 'ok' | 'error';
 
 type Rel<FK extends string, Col extends string, Ref extends string> = {
@@ -205,6 +208,7 @@ export type Database = {
           failure_reason: string | null;
           started_at: string;
           uploaded_at: string | null;
+          uploaded_by: string | null;
           created_at: string;
         };
         Insert: {
@@ -225,12 +229,14 @@ export type Database = {
           failure_reason?: string | null;
           started_at?: string;
           uploaded_at?: string | null;
+          uploaded_by?: string | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['uploads']['Insert']>;
         Relationships: [
           Rel<'uploads_request_id_fkey', 'request_id', 'document_requests'>,
           Rel<'uploads_client_id_fkey', 'client_id', 'clients'>,
+          Rel<'uploads_uploaded_by_fkey', 'uploaded_by', 'client_users'>,
         ];
       };
       audit_log: {
@@ -266,6 +272,48 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['rate_limits']['Insert']>;
         Relationships: [];
       };
+      client_users: {
+        Row: {
+          id: string;
+          client_id: string;
+          email: string;
+          first_name: string;
+          last_name: string;
+          role: ClientUserRole;
+          status: ClientUserStatus;
+          auth_user_id: string | null;
+          password_set_at: string | null;
+          invited_at: string | null;
+          last_login_at: string | null;
+          last_login_method: SignInMethod | null;
+          added_by_admin: string | null;
+          added_by_user: string | null;
+          removed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          email: string;
+          first_name?: string;
+          last_name?: string;
+          role?: ClientUserRole;
+          status?: ClientUserStatus;
+          auth_user_id?: string | null;
+          password_set_at?: string | null;
+          invited_at?: string | null;
+          last_login_at?: string | null;
+          last_login_method?: SignInMethod | null;
+          added_by_admin?: string | null;
+          added_by_user?: string | null;
+          removed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['client_users']['Insert']>;
+        Relationships: [Rel<'client_users_client_id_fkey', 'client_id', 'clients'>];
+      };
       portal_settings: {
         Row: { key: string; value: string; updated_by: string | null; updated_at: string };
         Insert: { key: string; value: string; updated_by?: string | null; updated_at?: string };
@@ -278,6 +326,19 @@ export type Database = {
       rate_limit_hit: {
         Args: { p_key: string; p_max: number; p_window_seconds: number };
         Returns: boolean;
+      };
+      portal_approve_session: {
+        Args: {
+          p_session_id: string;
+          p_auth_user_id: string;
+          p_method: string;
+          p_ttl_seconds: number;
+        };
+        Returns: undefined;
+      };
+      portal_revoke_session: {
+        Args: { p_session_id: string };
+        Returns: undefined;
       };
     };
     Enums: {

@@ -11,10 +11,12 @@ export function LoginForm({
   next,
   requestPath = '/api/auth/otp/request',
   verifyPath = '/api/auth/otp/verify',
+  verifyLabel = 'Sign in',
 }: {
   next: string | null;
   requestPath?: string;
   verifyPath?: string;
+  verifyLabel?: string;
 }) {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -154,7 +156,7 @@ export function LoginForm({
       </p>
       {error ? <Alert tone="error">{error}</Alert> : null}
       <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
-        {busy ? 'Checking…' : 'Sign in'}
+        {busy ? 'Checking…' : verifyLabel}
       </Button>
       <div className="flex flex-wrap justify-between gap-2 text-sm">
         <button

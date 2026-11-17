@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   if (data) {
     await audit({
       actorType: 'client',
-      actorId: ctx.client.id,
+      actorId: ctx.user.id,
       action: 'upload.failed',
       targetType: 'upload',
       targetId: data.id,

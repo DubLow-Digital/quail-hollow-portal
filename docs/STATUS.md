@@ -1,121 +1,107 @@
 # Status
 
-_Last updated: November 13, 2026_
+_Last updated: November 17, 2026. What changed and when is in [CHANGELOG.md](../CHANGELOG.md)._
 
-## Shipped (code complete, on branch `claude/charming-hamilton-mexkiv`, draft PR #1)
+## Where things stand
+
+Phase 1 is merged ([#1](https://github.com/DubLow-Digital/quail-hollow-portal/pull/1), Nov 13)
+and live at https://quail-hollow-portal.vercel.app (production deploys from `main`).
 
 | #   | Milestone                                                                                                                        | State                              |
 | --- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | 1   | Scaffold: Next.js 16, Tailwind 4, Supabase clients, lint/format, security headers, `.env.example`, README, CI                    | Done                               |
-| 2   | Migrations, RLS on every table, column-level grants, seed data, RLS tests                                                        | Done, 34 DB tests                  |
-| 3   | Graph service (token cache, children, create folder, upload session, get item), Entra runbook, grant and check scripts           | Done, mocked tests                 |
+| 2   | Migrations, RLS on every table, column-level grants, seed data, RLS tests                                                        | Done                               |
+| 3   | Graph service (token cache, children, create folder, upload session, get item), Entra runbook, grant and check scripts           | Done                               |
 | 4   | Admin Microsoft sign-in with allowlist; client CRUD; folder browser; link or create folder                                       | Done                               |
 | 5   | Document type library, bundles, assigning requests, invite and "documents requested" email                                       | Done                               |
 | 6   | Client one-time-code sign-in, rate limits, 30 min idle / 12 h absolute sessions, checklist                                       | Done                               |
-| 7   | Upload flow: photo, multi-page scan to PDF, choose file, server naming, direct chunked upload, verification, Aleida notification | Done, upload logic unit tested     |
+| 7   | Upload flow: photo, multi-page scan to PDF, choose file, server naming, direct chunked upload, verification, Aleida notification | Done                               |
 | 8   | Accept / needs-redo with note and email; audit log screen                                                                        | Done                               |
-| 9   | Hardening: CSP review, error pages, offline/retry, accessibility, Lighthouse, security summary                                   | Done (see below)                   |
+| 9   | Hardening: CSP review, error pages, offline/retry, accessibility, Lighthouse, security summary                                   | Done                               |
+| 10  | Deploy and test on phones with fake client data                                                                                  | Deployed; phone test pending       |
 | —   | Branding from the Quail Hollow logo (palette, serif wordmark, nest mark, emails)                                                 | Done; real logo files still to add |
 
-### Test results (local)
+Added after the Phase 1 brief, at Todd's request (Nov 13): the Files page, Notion and Lead
+Alchemist sync through quail-hollow-sync, Connect SharePoint, the backup emailed-code admin
+sign-in, and the full end-to-end CI test. Details in the change log.
 
-- `npm test`: 129 unit tests pass
-- `npm run test:db`: 34 RLS/database tests pass against Postgres 16
-- `npm run test:e2e`: 28 browser smoke tests pass (iPhone and Android viewports)
-- Lighthouse mobile, `/login` and `/admin/signin`: performance 99, accessibility 100,
-  best practices 96–100. SEO is intentionally low (the portal tells search engines not to index it).
-- Typecheck, lint and Prettier clean; production build succeeds
+Added Nov 17 (in review): **approved users and new client sign-in**. Each client can have
+several people who sign in (owner, office manager, spouse); Aleida and the client's main
+contact manage them. Clients sign in with Google, Microsoft, a passkey, or a password plus an
+authenticator app; an emailed code is now only for first-time setup and recovery, and a code
+alone cannot read any client data. Setup steps: `docs/client-sign-in-setup.md`.
 
-## Added after Phase 1 (at Todd's request, Nov 13)
+### Tests
 
-- **Connect SharePoint** (`/admin/sharepoint`): pick the client-folders folder inside the
-  portal; it is looked up and used with the portal's own Entra app only (no one's Microsoft
-  account). Shows what the app can reach, or the one-time site grant if it can reach nothing.
-- **Database update to run once:** `supabase/update-2026-11-14.sql` (Notion/Lead Alchemist
-  link columns and the settings table). Safe to run twice.
+- `npm test`: unit tests; `npm run test:db`: RLS and database tests on Postgres 16;
+  `npm run test:e2e`: browser smoke tests on iPhone and Android viewports. All run in CI.
+- CI job "Full end-to-end" runs the production build against real Supabase Auth, PostgREST and
+  Postgres and a SharePoint and Google/Microsoft stand-in, on a phone viewport: password +
+  authenticator setup by emailed code, Google sign-in for an office manager added by the main
+  contact, unapproved and unverified emails refused, passkey setup and sign-in (virtual
+  authenticator), code-only and password-only sessions read nothing, recovery, removal, a
+  client sees only their own requests, license photo filed as `TTest_DriversLicense_<date>.jpg`, a 3-page
+  scan arrives as one PDF, a 40 MB upload, client isolation (page, API and direct database),
+  accept, file browser, audit trail, Connect SharePoint, and no upload links or codes stored.
+- Lighthouse mobile, `/login` and `/admin/signin`: performance 99, accessibility 100.
 
-- **Admin file browser** (`/admin/files`, plus "Browse files" on each client): every client
-  folder and file, live from SharePoint, with breadcrumbs, search, "From portal" badges,
-  downloads (audited; straight from SharePoint) and "Open in SharePoint". Until SharePoint is
-  connected, `FILES_DEMO=true` shows a labeled sample tree with fake clients.
-- **Notion and Lead Alchemist sync** through quail-hollow-sync (docs/sync.md; companion PR
-  DubLow-Digital/quail-hollow-sync#4). Portal clients are created or linked in both; Import
-  brings clients in from either; linked changes flow back. Previously out of scope for Phase 1.
-- New migration `20261114000001_external_links.sql` (run it in Supabase if the database was
-  set up from an earlier `setup-all.sql`).
+## Production setup
 
-## Milestone 10: deploy to a Vercel preview (in progress)
+Configured in Vercel (names only): Supabase (integration), `AUTH_SECRET`, `ADMIN_ALLOWLIST`,
+`APP_BASE_URL`, `MS_TENANT_ID`, `MS_PORTAL_CLIENT_ID` / `_SECRET`, `MS_ADMIN_CLIENT_ID` /
+`_SECRET`, `SP_SITE_ID`, `SP_DRIVE_ID`, `SP_CLIENT_ROOT_FOLDER_ID`, `SP_HOSTNAME`,
+`SYNC_HUB_URL`, `SYNC_HUB_SECRET`, `FILES_DEMO`, `ADMIN_EMAIL_LOGIN`, `RESEND_API_KEY`,
+`EMAIL_FROM` (Nov 14; sending domain `notify.quailhollowaccounting.com` is verified in Resend,
+and Supabase already sends sign-in codes through Resend).
 
-Done:
+Still to do:
 
-- Vercel project `quail-hollow-portal` created in the team, linked to this repo (production
-  branch `main`; previews build from PR branches).
-- Previews use their own branch URL automatically when `APP_BASE_URL` is unset, and the app
-  accepts Supabase's newer publishable/secret key names.
-- `supabase/setup-all.sql`: every migration in one file for the Supabase SQL editor (a test keeps
-  it in sync; it applies cleanly to a fresh database).
+0. **Before merging the approved users / sign-in pull request:** run
+   `supabase/update-2026-11-17.sql` once in the Supabase SQL editor. Then follow
+   `docs/client-sign-in-setup.md`: turn on passkeys in Supabase (relying party = the portal
+   domain), and create the Google and Microsoft sign-in apps.
 
-- Backup admin sign-in by emailed code (`ADMIN_EMAIL_LOGIN=true`), added during the Microsoft
-  outage on Nov 13. Turn it off in production once Microsoft sign-in works.
-- Fixed: the admin allowlist check no longer needs the Microsoft admin-app settings.
-
-Remaining:
-
-1. Vercel env vars `AUTH_SECRET` (separate preview and production values) and `ADMIN_ALLOWLIST`.
-2. Supabase project (docs/supabase-setup.md step 1), Auth settings, Resend SMTP, code template.
-   The build sandbox cannot reach Supabase, so this is a dashboard step.
-3. Entra apps in Aleida's tenant and the one-site grant (docs/entra-setup.md), then
-   `npm run graph:check`.
-4. Resend: verify the sending domain (DNS change).
-5. Todd tests on iPhone and Android with the fake "Todd Test" client (docs/deploy.md step 5).
-
-## Full end-to-end test (passing in CI)
-
-CI job "Full end-to-end" runs the production build against real Supabase Auth, PostgREST and
-Postgres (`supabase start`, all migrations) and a local SharePoint stand-in, on a phone viewport.
-All 8 steps pass (Nov 13):
-
-1. Aleida signs in with an emailed code, adds two clients, creates their folders and requests.
-2. The client signs in on a phone with an emailed code and sees exactly their own requests.
-3. A photo of a fake license arrives as `TTest_DriversLicense_<date>.jpg` in `Individual/ID`.
-4. A three-page scan arrives as one 3-page PDF.
-5. A 40 MB PDF uploads in 5 MiB chunks; the second file is renamed with " 1".
-6. A client cannot open, upload to or query another client's request (page, upload API and
-   direct database API with their own token); admin-only columns and the audit log are refused.
-7. Aleida accepts, browses the files ("From portal" badge, audited download) and the audit log
-   shows every sign-in, upload and admin action.
-8. No upload links or sign-in codes are stored in any table.
-
-The run found and fixed one real bug: after a correct code, the client could bounce back to the
-sign-in page (a client-side transition reused a cached redirect). Sign-in now does a full page
-load, and rejected sessions are logged with a reason code.
-
-Still to confirm with Microsoft once the Entra app exists: browser uploads straight to the real
-SharePoint upload URL (CORS) and Graph behavior in Aleida's tenant (`npm run graph:check`).
+1. **Admin Microsoft sign-in:** assign Todd and Aleida to the "Quail Hollow Portal Admin
+   Sign-in" enterprise app in Aleida's tenant (Users and groups). Until then Microsoft refuses
+   the sign-in with AADSTS50105. The emailed-code sign-in works meanwhile.
+2. **Email:** done Nov 14. Send one invite to confirm delivery.
+3. **SharePoint check:** confirm the Files page lists the real client folders and run
+   `npm run graph:check`. If the app sees no site, a Global Admin runs the one-time grant shown
+   on `/admin/sharepoint`.
+4. **Phone test:** Todd tests on iPhone and Android with the fake "Todd Test" client
+   (docs/deploy.md step 5), including one real upload into SharePoint.
+5. **After Microsoft sign-in works:** set `ADMIN_EMAIL_LOGIN` to false and remove
+   `todd@dub-low.consulting` from `ADMIN_ALLOWLIST`.
+6. **Sync:** give the Lead Alchemist token Edit Contacts; add the Notion properties Portal Client
+   ID (text) and Client Portal (select: Invited, Active, Archived); delete the unused
+   `SUITEDASH_MODE` in the sync project's Vercel settings.
 
 ## Open questions for Todd
 
-0. **Sync setup:** Lead Alchemist token needs Edit Contacts; check "Contact Created" workflows
-   for the `client portal` tag; optional Notion properties Portal Client ID and Client Portal.
-   New Notion records from the portal get Lead Source "Client Portal" and Notion's default
-   Client Status. OK?
-
-1. **Portal domain:** `secure.quailhollowaccounting.com` (proposed) while `portal.` stays on SuiteDash?
-2. **SharePoint location:** which site and library hold client folders, and do existing client
-   folders get linked as they are or re-created in the standard structure?
-3. **Todd's admin access:** Todd's account is in DubLow's tenant. Recommended: invite him as a
-   B2B guest in Aleida's tenant (no code change). Alternative documented in entra-setup.md step 6.
-4. **Social Security cards:** keep as images, or replace later with a secure typed field?
-5. **Retention:** how long to keep upload metadata and audit logs?
-6. **Logo files:** please add `public/brand/logo-horizontal.png` (nest + wordmark, transparent
-   background) to the repo; the portal switches to it automatically. The images shared in chat
-   could not be saved as files from this session.
-7. **Business documents filing:** Formation documents, EIN letter and W-9 file under
+1. **Portal domain:** `portal.quailhollowaccounting.com` still points to SuiteDash. Use
+   `secure.quailhollowaccounting.com`, or move `portal.` to this portal?
+2. **Existing client folders:** link them as they are, or re-create them in the standard
+   structure?
+3. **Social Security cards:** keep as images, or replace later with a secure typed field?
+4. **Retention:** how long to keep upload metadata and audit logs?
+5. **Logo files:** add `public/brand/logo-horizontal.png` (nest + wordmark, transparent
+   background); the portal switches to it automatically.
+6. **Business documents filing:** Formation documents, EIN letter and W-9 file under
    `Businesses/{business}`; the business return under `Businesses/{business}/{year}`. Bank
    statements file under `Individual/Income Documents/{year}`. Aleida can change any of these
    per document type; confirm the defaults.
-8. **Admin idle timeout:** set to 60 minutes (clients are 30). OK?
-9. **MFA:** recommend a Conditional Access policy requiring MFA on the admin sign-in app.
+7. **Admin idle timeout:** 60 minutes (clients are 30). OK?
+8. **MFA:** recommend a Conditional Access policy requiring MFA on the admin sign-in app.
+9. **Sync defaults:** new Notion records from the portal get Lead Source "Client Portal" and
+   Notion's default Client Status. OK?
+
+10. **Passkey domain:** passkeys are tied to the portal's domain. Decide the final domain
+    before clients create passkeys, or they re-create them after a domain change.
+11. **One client per email:** an email can sign in for only one client. A spouse who is also a
+    client in her own right needs a different email for one of them. OK for now?
+12. **Next.js:** a moderate advisory (GHSA-mfr8-8qww-v76h) affects 16.4.3, but only the
+    `use cache` / `unstable_cache` feature, which the portal does not use. Upgrade to 16.4.6
+    on or after Nov 23 (the 14-day rule for new packages).
 
 ## Decisions made during the build
 
@@ -126,6 +112,13 @@ SharePoint upload URL (CORS) and Graph behavior in Aleida's tenant (`npm run gra
 - Photos are re-encoded in the browser (~2400 px JPEG), which also strips GPS metadata.
 - The sign-in code email is the Supabase "Magic Link" template showing `{{ .Token }}`.
 - Rate limits live in Postgres (no extra paid service).
+- Nov 17, at Todd's request (changes the brief's "email one-time code, no passwords"): approved
+  users per client; sign-in with Google, Microsoft, a passkey, or a password plus authenticator
+  app; emailed codes only for setup and recovery. Google and Microsoft are handled by the
+  portal itself (OpenID Connect, no extra service), and a session can read client data only
+  after the portal approves it following a full sign-in (`private.full_sessions`).
+- The SharePoint location can be chosen in the portal (`portal_settings`); Vercel `SP_*`
+  settings take precedence when set.
 
 ## Phase 1b / later
 
@@ -133,5 +126,4 @@ SharePoint upload URL (CORS) and Graph behavior in Aleida's tenant (`npm run gra
   the scan screen)
 - Scheduled cleanup of uploads abandoned in the browser (currently labeled "Did not finish")
 - Out of scope for Phase 1 per the brief: locked fillable forms (check roster), delivering
-  finished documents to clients, QuickBooks, e-signature, payments (Notion and Lead Alchemist
-  sync were added on Nov 13 at Todd's request)
+  finished documents to clients, QuickBooks, e-signature, payments

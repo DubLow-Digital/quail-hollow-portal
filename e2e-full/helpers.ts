@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 
@@ -197,4 +198,97 @@ export async function expectSignedInAt(page: Page, path: string): Promise<void> 
       `Expected ${path} after sign-in; at ${page.url()} (h1: ${heading ?? 'none'}); cookies: ${names.join(', ') || 'none'}. ${(err as Error).message.split('\n')[0]}`,
     );
   }
+}
+
+/**
+ * RFC 6238 time-based code (SHA-1, 30 seconds, 6 digits) from a base32 key, exactly as an
+ * authenticator app computes it.
+ */
+export function totpCode(secret: string, at = Date.now()): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const ch of secret.replace(/[\s=]/g, '').toUpperCase()) {
+    const v = alphabet.indexOf(ch);
+    if (v < 0) throw new Error('not a base32 key');
+    bits += v.toString(2).padStart(5, '0');
+  }
+  const bytes: number[] = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / 30)));
+  const h = createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
+  const off = h[h.length - 1]! & 0xf;
+  const n = ((h[off]! & 0x7f) << 24) | (h[off + 1]! << 16) | (h[off + 2]! << 8) | h[off + 3]!;
+  return String(n % 1_000_000).padStart(6, '0');
+}
+
+const usedTotp = new Set<string>();
+/** A code not used before (waits for the next 30-second window when needed). */
+export async function freshTotp(secret: string): Promise<string> {
+  for (;;) {
+    const code = totpCode(secret);
+    const key = `${secret}:${code}`;
+    if (!usedTotp.has(key)) {
+      usedTotp.add(key);
+      return code;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+/**
+ * First-time setup or recovery: "First time here?" on the sign-in page, then the emailed
+ * code. Ends on the setup screen. Returns the code (so tests can check it is never stored).
+ */
+export async function startClientSetup(page: Page, email: string): Promise<string> {
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'First time here? Forgot your password?' }).click();
+  const since = Date.now() - 10_000;
+  await page.getByLabel('Email address').fill(email);
+  await page.getByRole('button', { name: 'Email me a code' }).click();
+  await expect(page.getByLabel('Enter your code')).toBeVisible();
+  const code = await latestCode(email, since);
+  await page.getByLabel('Enter your code').fill(code);
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.waitForURL((u) => u.pathname === '/account/setup');
+  return code;
+}
+
+/** On the setup screen: a password plus an authenticator app. Returns the app's key. */
+export async function setUpPasswordAndAuthenticator(page: Page, password: string): Promise<string> {
+  await page.getByRole('button', { name: 'Use a password' }).click();
+  await page.getByLabel('New password').fill(password);
+  await page.getByLabel('Type it again').fill(password);
+  await page.getByRole('button', { name: 'Save password' }).click();
+  const secret = (await page.getByTestId('totp-secret').textContent())?.trim() ?? '';
+  await page.getByLabel('Code from the app').fill(await freshTotp(secret));
+  await page.getByRole('button', { name: 'Finish and sign in' }).click();
+  return secret;
+}
+
+/** Email + password, then the authenticator code. */
+export async function signInWithPassword(
+  page: Page,
+  email: string,
+  password: string,
+  secret: string,
+): Promise<void> {
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByLabel('Authenticator code').fill(await freshTotp(secret));
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+}
+
+/** Who the Google or Microsoft stand-in signs in next (claims of the ID token). */
+export async function setSsoIdentity(
+  provider: 'google' | 'microsoft',
+  claims: Record<string, unknown> | null,
+): Promise<void> {
+  const res = await fetch(`${GRAPH_MOCK}/__test/oauth-identity`, {
+    method: 'POST',
+    body: JSON.stringify({ provider, claims }),
+  });
+  if (!res.ok) throw new Error(`stand-in refused identity: ${res.status}`);
 }

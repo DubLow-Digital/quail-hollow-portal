@@ -15,11 +15,16 @@ import {
   clientRest,
   expectSignedInAt,
   firmDate,
+  freshTotp,
   GRAPH_MOCK,
   makePng,
   mockContent,
   mockFiles,
+  setSsoIdentity,
+  setUpPasswordAndAuthenticator,
   signInWithCode,
+  signInWithPassword,
+  startClientSetup,
 } from './helpers';
 
 /**
@@ -32,6 +37,10 @@ const RUN = Date.now().toString(36);
 const ADMIN = process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com';
 const TODD = { first: 'Todd', last: 'Test', email: `todd.test.${RUN}@example.com` };
 const SAM = { first: 'Sam', last: 'Sample', email: `sam.sample.${RUN}@example.com` };
+// Todd's office manager, added by Todd on the People page.
+const OLIVIA = { first: 'Olivia', last: 'Office', email: `olivia.office.${RUN}@example.com` };
+const TODD_PASSWORD = `blue heron porch light ${RUN}`;
+const WORK_TENANT = '11111111-2222-4333-8444-555555555555';
 const DL = "Driver's License (front and back)";
 const BANK = 'Bank Statement';
 
@@ -40,6 +49,8 @@ let todd: Page;
 let toddContext: BrowserContext;
 const ids: { todd?: string; sam?: string; toddDl?: string; toddBank?: string; samDl?: string } = {};
 const codes: string[] = [];
+let toddSecret = '';
+let olivia: Page;
 const files = { photo: '', big: '' };
 
 async function phoneContext(browser: Browser) {
@@ -110,8 +121,10 @@ test('Aleida signs in with an emailed code and sets up two clients', async () =>
   expect(toddReqs).toHaveLength(2);
 });
 
-test('the client signs in on a phone and sees exactly their own requests', async () => {
-  codes.push(await signInWithCode(todd, '/login', TODD.email));
+test('the client sets up a password and authenticator on a phone and sees exactly their own requests', async () => {
+  // First time: an emailed code proves the address, then a password plus an authenticator app.
+  codes.push(await startClientSetup(todd, TODD.email));
+  toddSecret = await setUpPasswordAndAuthenticator(todd, TODD_PASSWORD);
   await expectSignedInAt(todd, '/');
   await expect(todd.getByRole('heading', { name: 'Still needed' })).toBeVisible();
   const hrefs = await todd
@@ -295,14 +308,174 @@ test('Connect SharePoint shows what the portal app can reach and saves the folde
   expect(audit.length).toBeGreaterThan(0);
 });
 
+test('the main contact adds an office manager, who signs in with Google and sees the same requests', async ({
+  browser,
+}) => {
+  await todd.goto('/people');
+  await todd.getByLabel('First name').fill(OLIVIA.first);
+  await todd.getByLabel('Last name').fill(OLIVIA.last);
+  await todd.getByLabel('Their email').fill(OLIVIA.email);
+  await todd.getByLabel('Email them an invite now').uncheck();
+  await todd.getByRole('button', { name: 'Add person' }).click();
+  await expect(todd.getByText(`${OLIVIA.first} can now sign in`)).toBeVisible();
+  await expect(todd.locator('li', { hasText: OLIVIA.email })).toBeVisible();
+
+  await setSsoIdentity('google', {
+    email: OLIVIA.email.toUpperCase(),
+    email_verified: true,
+    name: 'Olivia Office',
+  });
+  olivia = await (await phoneContext(browser)).newPage();
+  await olivia.goto('/login');
+  await olivia.getByRole('link', { name: 'Continue with Google' }).click();
+  await expectSignedInAt(olivia, '/');
+  const hrefs = await olivia
+    .locator('a[href^="/request/"]')
+    .evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  expect(new Set(hrefs)).toEqual(new Set([`/request/${ids.toddDl}`, `/request/${ids.toddBank}`]));
+  // Only the main contact manages people.
+  await expect(olivia.getByRole('link', { name: 'People' })).toHaveCount(0);
+  await olivia.goto('/people');
+  await olivia.waitForURL((u) => u.pathname === '/');
+
+  const logins = await adminRest<{ metadata: { method?: string } }[]>(
+    `audit_log?select=metadata&action=eq.client.login&target_id=eq.${ids.todd}`,
+  );
+  expect(new Set(logins.map((r) => r.metadata.method))).toEqual(new Set(['password', 'google']));
+});
+
+test('Google or Microsoft sign-in is refused for an email that is not approved or not verified', async ({
+  browser,
+}) => {
+  const page = await (await phoneContext(browser)).newPage();
+  await setSsoIdentity('microsoft', {
+    email: `stranger.${RUN}@example.com`,
+    tid: WORK_TENANT,
+    xms_edov: true,
+  });
+  await page.goto('/login');
+  await page.getByRole('link', { name: 'Continue with Microsoft' }).click();
+  await page.waitForURL(/\/login\?sso=no_match/);
+  await expect(page.getByText('is not on our list of people who can sign in')).toBeVisible();
+
+  // A work account whose email domain Microsoft has not verified, even for an approved email.
+  await setSsoIdentity('microsoft', { email: SAM.email, tid: WORK_TENANT, xms_edov: false });
+  await page.getByRole('link', { name: 'Continue with Microsoft' }).click();
+  await page.waitForURL(/\/login\?sso=unverified/);
+  await setSsoIdentity('google', { email: SAM.email, email_verified: false });
+  await page.getByRole('link', { name: 'Continue with Google' }).click();
+  await page.waitForURL(/\/login\?sso=unverified/);
+  await page.goto('/');
+  await page.waitForURL((u) => u.pathname === '/login');
+});
+
+test('Sam sets up a passkey with an emailed code, then signs in with the passkey alone', async ({
+  browser,
+}) => {
+  const context = await phoneContext(browser);
+  const page = await context.newPage();
+  // A built-in passkey authenticator that approves every prompt (Face ID / fingerprint).
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      protocol: 'ctap2',
+      transport: 'internal',
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  });
+  codes.push(await startClientSetup(page, SAM.email));
+  await page.getByRole('button', { name: 'Create a passkey' }).click();
+  await expectSignedInAt(page, '/');
+  await expect(page.locator(`a[href="/request/${ids.samDl}"]`)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.waitForURL((u) => u.pathname === '/login');
+  await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
+  await expectSignedInAt(page, '/');
+  await expect(page.locator(`a[href="/request/${ids.samDl}"]`)).toBeVisible();
+});
+
+test('a password alone or an emailed code alone never reaches documents; recovery needs the authenticator', async ({
+  browser,
+}) => {
+  // Password + authenticator: full sign-in.
+  const page = await (await phoneContext(browser)).newPage();
+  await signInWithPassword(page, TODD.email, TODD_PASSWORD, toddSecret);
+  await expectSignedInAt(page, '/');
+
+  // A wrong password is refused without saying whether the email exists.
+  const wrong = await (await phoneContext(browser)).newPage();
+  await wrong.goto('/login');
+  await wrong.getByLabel('Email address').fill(TODD.email);
+  await wrong.getByLabel('Password').fill('not the right password');
+  await wrong.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(wrong.getByText('do not match')).toBeVisible();
+
+  // An emailed code alone: only the setup screen, which asks for the authenticator first.
+  const context = await phoneContext(browser);
+  const setup = await context.newPage();
+  codes.push(await startClientSetup(setup, TODD.email));
+  await expect(setup.getByRole('heading', { name: 'Confirm it is you' })).toBeVisible();
+  await setup.goto('/');
+  await setup.waitForURL((u) => u.pathname === '/account/setup');
+  const start = await setup.request.post('/api/uploads/start', {
+    headers: { origin: new URL(setup.url()).origin },
+    data: {
+      requestId: ids.toddBank,
+      mime: 'application/pdf',
+      size: 1000,
+      pageCount: 1,
+      captureMethod: 'file',
+      originalName: 'x.pdf',
+    },
+  });
+  expect(start.status()).toBe(403);
+  // Its database token reads nothing, even straight from the database API.
+  const token = accessTokenFromCookies(await context.cookies());
+  expect((await clientRest(token, 'clients?select=id')).body).toEqual([]);
+  expect((await clientRest(token, 'document_requests?select=id')).body).toEqual([]);
+  expect((await clientRest(token, 'client_users?select=id')).body).toEqual([]);
+
+  // Recovery: the authenticator code, then a new password.
+  await setup.getByLabel('Authenticator code').fill(await freshTotp(toddSecret));
+  await setup.getByRole('button', { name: 'Continue', exact: true }).click();
+  await setup.getByLabel('New password').fill(`${TODD_PASSWORD} again`);
+  await setup.getByLabel('Type it again').fill(`${TODD_PASSWORD} again`);
+  await setup.getByRole('button', { name: 'Save password' }).click();
+  await expectSignedInAt(setup, '/');
+});
+
+test('Aleida removes the office manager, who is signed out and cannot sign in again', async () => {
+  await admin.goto(`/admin/clients/${ids.todd}`);
+  const row = admin.locator('li', { hasText: OLIVIA.email });
+  await expect(row.getByText('Active')).toBeVisible();
+  admin.once('dialog', (d) => void d.accept());
+  await row.getByRole('button', { name: 'Remove' }).click();
+  await expect(admin.getByText('Removed. They can no longer sign in.')).toBeVisible();
+  await expect(admin.locator('li', { hasText: OLIVIA.email })).toHaveCount(0);
+
+  await olivia.goto('/');
+  await olivia.waitForURL((u) => u.pathname === '/login');
+  await setSsoIdentity('google', { email: OLIVIA.email, email_verified: true });
+  await olivia.getByRole('link', { name: 'Continue with Google' }).click();
+  await olivia.waitForURL(/\/login\?sso=no_match/);
+});
+
 test('no file bytes, sign-in codes or upload links are stored', async () => {
-  const tables = ['audit_log', 'uploads', 'document_requests', 'clients'];
+  const tables = ['audit_log', 'uploads', 'document_requests', 'clients', 'client_users'];
   const dump = JSON.stringify(
     await Promise.all(tables.map((t) => adminRest<unknown[]>(`${t}?select=*&limit=1000`))),
   );
   expect(dump).not.toContain(`${GRAPH_MOCK}/upload/`);
   // A stored code would be a string value ("123456"); bare digits also occur in timestamps.
   for (const code of codes) expect(dump).not.toContain(`"${code}"`);
+  // Nor the authenticator key or a password.
+  expect(dump).not.toContain(toddSecret);
+  expect(dump).not.toContain(TODD_PASSWORD);
   const uploads = await adminRest<
     { size_bytes: number; sharepoint_item_id: string; status: string }[]
   >(`uploads?select=size_bytes,sharepoint_item_id,status&client_id=eq.${ids.todd}`);

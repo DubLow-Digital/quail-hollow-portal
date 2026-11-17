@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 
 /**
@@ -60,13 +61,27 @@ export async function asRole<T>(
   role: Role,
   sub: string | null,
   fn: (q: (sql: string, params?: unknown[]) => Promise<pg.QueryResult>) => Promise<T>,
+  opts: { fullSignIn?: boolean } = {},
 ): Promise<T> {
   await client.query('begin');
   try {
-    await client.query(`set local role ${role}`);
     if (sub) {
+      // Like a real Supabase token: a subject and a session ID. Unless told otherwise, the
+      // portal has approved this session after a full sign-in.
+      const sessionId = randomUUID();
+      if (role === 'authenticated' && opts.fullSignIn !== false) {
+        await client.query(
+          `insert into private.full_sessions (session_id, auth_user_id, method, expires_at)
+           values ($1, $2, 'test', now() + interval '1 hour')`,
+          [sessionId, sub],
+        );
+      }
       await client.query(`select set_config('request.jwt.claim.sub', $1, true)`, [sub]);
+      await client.query(`select set_config('request.jwt.claims', $1, true)`, [
+        JSON.stringify({ sub, session_id: sessionId, role }),
+      ]);
     }
+    await client.query(`set local role ${role}`);
     return await fn((sql, params) => client.query(sql, params as unknown[]));
   } finally {
     await client.query('rollback');

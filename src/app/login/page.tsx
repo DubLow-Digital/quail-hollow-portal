@@ -4,14 +4,32 @@ import { getClient } from '@/lib/auth/client';
 import { safeNextPath } from '@/lib/auth/routes';
 import { ClientFooter, ClientHeader } from '@/components/client/brand';
 import { Alert } from '@/components/ui';
-import { LoginForm } from './login-form';
+import { clientSsoProviders } from '@/lib/env';
+import { ClientSignIn } from './client-sign-in';
 
 export const metadata: Metadata = { title: 'Sign in' };
+
+const SSO_MESSAGES: Record<string, string> = {
+  no_match:
+    "That account's email is not on our list of people who can sign in. Use the email address we have for you, or ask your main contact or our office to add you.",
+  unverified:
+    'That account did not share a verified email address with us. Please use another way to sign in.',
+  cancelled: 'Sign-in was cancelled.',
+  failed: 'Sign-in did not complete. Please try again or use another way to sign in.',
+  unavailable: 'That sign-in option is not available right now. Please use another way.',
+  rate_limited: 'Too many attempts. Please wait a few minutes and try again.',
+};
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ expired?: string; signedout?: string; next?: string }>;
+  searchParams: Promise<{
+    expired?: string;
+    signedout?: string;
+    next?: string;
+    sso?: string;
+    setup?: string;
+  }>;
 }) {
   const params = await searchParams;
   const existing = await getClient().catch(() => null);
@@ -25,8 +43,7 @@ export default async function LoginPage({
           Sign in to send your documents
         </h1>
         <p className="mt-2 text-neutral-700">
-          Enter the email address we have on file. We will send you a one-time code. No password
-          needed.
+          Choose how you sign in. If your email is a Google or Microsoft account, use that button.
         </p>
         <div className="mt-4 space-y-3">
           {params.expired ? (
@@ -35,9 +52,18 @@ export default async function LoginPage({
             </Alert>
           ) : null}
           {params.signedout ? <Alert tone="success">You are signed out.</Alert> : null}
+          {params.sso && SSO_MESSAGES[params.sso] ? (
+            <Alert tone={params.sso === 'cancelled' ? 'neutral' : 'error'}>
+              {SSO_MESSAGES[params.sso]}
+            </Alert>
+          ) : null}
         </div>
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-          <LoginForm next={safeNextPath(params.next ?? null)} />
+          <ClientSignIn
+            providers={clientSsoProviders()}
+            next={safeNextPath(params.next ?? null)}
+            startWithCode={params.setup === '1'}
+          />
         </div>
       </main>
       <ClientFooter />
