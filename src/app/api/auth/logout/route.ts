@@ -3,8 +3,8 @@ import { assertSameOrigin } from '@/lib/security/origin';
 import { createUserSupabase } from '@/lib/supabase/server';
 import { findSignInUserByAuthId } from '@/lib/clients/users';
 import { revokeCurrentSession } from '@/lib/auth/client-session';
-import { isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
-import { CLIENT_SESSION_COOKIE } from '@/lib/auth/session-policy';
+import { SUPABASE_COOKIE_OPTIONS, isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
+import { CLIENT_SESSION_COOKIE, clearPortalCookie } from '@/lib/auth/session-policy';
 import { metaFromHeaders } from '@/lib/request-meta';
 import { audit } from '@/lib/audit';
 
@@ -39,8 +39,9 @@ export async function POST(request: NextRequest) {
   const target = reason === 'idle' ? '/login?expired=1' : '/login?signedout=1';
   const res = NextResponse.redirect(new URL(target, request.url), 303);
   for (const cookie of request.cookies.getAll()) {
-    if (isSupabaseAuthCookie(cookie.name)) res.cookies.delete(cookie.name);
+    if (isSupabaseAuthCookie(cookie.name))
+      res.cookies.set(cookie.name, '', { ...SUPABASE_COOKIE_OPTIONS, maxAge: 0 });
   }
-  res.cookies.delete(CLIENT_SESSION_COOKIE);
+  clearPortalCookie(res, CLIENT_SESSION_COOKIE);
   return res;
 }

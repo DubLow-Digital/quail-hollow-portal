@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ADMIN_SESSION_COOKIE, checkAdminSession } from '@/lib/auth/session-policy';
+import {
+  ADMIN_SESSION_COOKIE,
+  checkAdminSession,
+  clearPortalCookie,
+} from '@/lib/auth/session-policy';
 import { appEnv } from '@/lib/env';
 import { audit } from '@/lib/audit';
 import { metaFromHeaders } from '@/lib/request-meta';
@@ -22,6 +26,6 @@ export async function POST(request: NextRequest) {
     });
   }
   const res = NextResponse.redirect(new URL('/admin/signin?signedout=1', request.url), 303);
-  res.cookies.delete(ADMIN_SESSION_COOKIE);
+  clearPortalCookie(res, ADMIN_SESSION_COOKIE);
   return res;
 }

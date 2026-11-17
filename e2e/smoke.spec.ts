@@ -228,6 +228,48 @@ test.describe('sign-in form', () => {
     await expect(page.getByText(/did not share a verified email/)).toBeVisible();
   });
 
+  test('the Sign out buttons work (a form post with Origin: null from our own pages)', async ({
+    page,
+  }) => {
+    for (const [path, action, landing] of [
+      ['/login', '/api/auth/logout', /\/login\?signedout=1$/],
+      ['/admin/signin', '/api/auth/admin/signout', /\/admin\/signin/],
+    ] as const) {
+      await page.goto(path);
+      // The same plain form the signed-in pages use.
+      await page.evaluate((url) => {
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = url;
+        document.body.appendChild(form);
+        form.submit();
+      }, action);
+      await expect(page).toHaveURL(landing);
+    }
+  });
+
+  test('signing out really removes the session cookies (Secure, as __Host- cookies need)', async ({
+    request,
+    baseURL,
+  }) => {
+    for (const [action, cookie] of [
+      ['/api/auth/admin/signout', '__Host-qh_as'],
+      ['/api/auth/logout', '__Host-qh_cs'],
+    ] as const) {
+      const res = await request.post(action, { headers: { origin: baseURL! }, maxRedirects: 0 });
+      expect(res.status()).toBe(303);
+      const setCookie = res
+        .headersArray()
+        .filter((h) => h.name.toLowerCase() === 'set-cookie')
+        .map((h) => h.value)
+        .find((v) => v.startsWith(`${cookie}=`));
+      expect(setCookie, `${action} clears ${cookie}`).toBeTruthy();
+      expect(setCookie).toMatch(/;\s*Secure/i);
+      expect(setCookie).toMatch(/;\s*Path=\//i);
+      expect(setCookie).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/i);
+    }
+  });
+
   test('setup, sign-in options and people pages need a session', async ({ page }) => {
     for (const path of ['/account/setup', '/people']) {
       await page.goto(path);

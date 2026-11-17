@@ -40,6 +40,17 @@ Entra) by name only, never their values.
 - The audit log records client actions by person, and shows approved-user changes.
   ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
 
+### Fixed
+
+- **Sign out did nothing** for clients and admins. Because the portal sends
+  `Referrer-Policy: no-referrer`, browsers label the Sign out form's origin as `null`, which
+  the portal's cross-site check refused. It now accepts that only when the browser itself
+  marks the request same-origin (`Sec-Fetch-Site`).
+  ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+- Signing out (and expired sessions) now really remove the portal's session cookies: deleting
+  a `__Host-` cookie needs the Secure attribute, which the old deletion left out, so an admin
+  session could survive Sign out. ([#2](https://github.com/DubLow-Digital/quail-hollow-portal/pull/2))
+
 ### Security
 
 - A session started with only an emailed code or only a password cannot read any client data:

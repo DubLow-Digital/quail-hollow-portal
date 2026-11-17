@@ -6,6 +6,7 @@ import {
   ADMIN_SESSION_COOKIE,
   issueAdminSession,
   sessionCookieOptions,
+  clearPortalCookie,
 } from '@/lib/auth/session-policy';
 import { appEnv } from '@/lib/env';
 import { serviceSupabase } from '@/lib/supabase/admin';
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   const meta = metaFromHeaders(request.headers);
   const fail = (reason: string) => {
     const res = NextResponse.redirect(new URL(`/admin/signin?error=${reason}`, request.url));
-    res.cookies.delete(ADMIN_OAUTH_COOKIE);
+    clearPortalCookie(res, ADMIN_OAUTH_COOKIE);
     return res;
   };
 
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
   const res = NextResponse.redirect(
     new URL(result.next?.startsWith('/admin') ? result.next : '/admin', request.url),
   );
-  res.cookies.delete(ADMIN_OAUTH_COOKIE);
+  clearPortalCookie(res, ADMIN_OAUTH_COOKIE);
   res.cookies.set(
     ADMIN_SESSION_COOKIE,
     issueAdminSession(appEnv().AUTH_SECRET, {

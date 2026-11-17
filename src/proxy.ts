@@ -13,6 +13,7 @@ import {
   sessionCookieOptions,
   touchAdminSession,
   touchClientSession,
+  clearPortalCookie,
 } from '@/lib/auth/session-policy';
 import { SUPABASE_COOKIE_OPTIONS, isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
 import { SETUP_PATH, classifyPath, safeNextPath, setupAllowed } from '@/lib/auth/routes';
@@ -67,7 +68,7 @@ export async function proxy(request: NextRequest) {
         reason: check.reason,
         csp,
       });
-      res.cookies.delete(ADMIN_SESSION_COOKIE);
+      clearPortalCookie(res, ADMIN_SESSION_COOKIE);
       return res;
     }
     const res = makeNext();
@@ -117,9 +118,10 @@ export async function proxy(request: NextRequest) {
     const reason = !userId ? 'missing' : check.ok ? 'invalid' : check.reason;
     const res = deny(request, { isPageGet, loginPath: '/login', reason, csp });
     for (const cookie of request.cookies.getAll()) {
-      if (isSupabaseAuthCookie(cookie.name)) res.cookies.delete(cookie.name);
+      if (isSupabaseAuthCookie(cookie.name))
+        res.cookies.set(cookie.name, '', { ...SUPABASE_COOKIE_OPTIONS, maxAge: 0 });
     }
-    res.cookies.delete(CLIENT_SESSION_COOKIE);
+    clearPortalCookie(res, CLIENT_SESSION_COOKIE);
     return res;
   }
 

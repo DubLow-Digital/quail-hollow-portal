@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { completeSsoSignIn } from '@/lib/auth/client-oauth';
 import { isSsoProvider } from '@/lib/auth/oidc-claims';
 import { completeFullSignIn, startSessionForUser } from '@/lib/auth/client-session';
-import { CLIENT_OAUTH_COOKIE } from '@/lib/auth/session-policy';
+import { CLIENT_OAUTH_COOKIE, clearPortalCookie } from '@/lib/auth/session-policy';
 import { findSignInUserByEmail } from '@/lib/clients/users';
 import { createUserSupabase } from '@/lib/supabase/server';
 import { LIMITS, hitLimits } from '@/lib/security/rate-limit';
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ provide
   const meta = metaFromHeaders(request.headers);
   const back = (reason: string) => {
     const res = NextResponse.redirect(new URL(`/login?sso=${reason}`, request.url), 303);
-    res.cookies.delete(CLIENT_OAUTH_COOKIE);
+    clearPortalCookie(res, CLIENT_OAUTH_COOKIE);
     return res;
   };
   if (!isSsoProvider(provider)) return back('unavailable');
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ provide
   const supabase = await createUserSupabase();
   const target = result.next && !result.next.startsWith('/admin') ? result.next : '/';
   const res = NextResponse.redirect(new URL(target, request.url), 303);
-  res.cookies.delete(CLIENT_OAUTH_COOKIE);
+  clearPortalCookie(res, CLIENT_OAUTH_COOKIE);
   if (
     !(await startSessionForUser(supabase, user)) ||
     !(await completeFullSignIn({ supabase, user, method: provider, res, meta }))
