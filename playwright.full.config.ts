@@ -11,6 +11,14 @@ const BASE_URL = `http://localhost:${PORT}`;
 const MOCK_URL = `http://127.0.0.1:${MOCK_PORT}`;
 process.env.E2E_GRAPH_MOCK_URL = MOCK_URL;
 
+// Google and Microsoft sign-in go to the same local stand-in (fake, test-only credentials).
+const sso = {
+  GOOGLE_OAUTH_CLIENT_ID: 'e2e-google-client',
+  GOOGLE_OAUTH_CLIENT_SECRET: 'e2e-google-not-a-secret',
+  MS_CLIENT_SIGNIN_CLIENT_ID: 'e2e-microsoft-client',
+  MS_CLIENT_SIGNIN_CLIENT_SECRET: 'e2e-microsoft-not-a-secret',
+};
+
 const graph = {
   MS_TENANT_ID: 'e2e-tenant',
   MS_PORTAL_CLIENT_ID: 'e2e-client',
@@ -44,7 +52,7 @@ export default defineConfig({
       command: 'node e2e-full/mock-graph.mjs',
       url: `${MOCK_URL}/__test/health`,
       reuseExistingServer: false,
-      env: { PORT: String(MOCK_PORT), ...graph },
+      env: { PORT: String(MOCK_PORT), ...graph, ...sso },
     },
     {
       command: `npx next start -p ${PORT}`,
@@ -60,6 +68,8 @@ export default defineConfig({
         SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
         ...graph,
         E2E_GRAPH_MOCK_URL: MOCK_URL,
+        ...sso,
+        E2E_OAUTH_MOCK_URL: MOCK_URL,
         ADMIN_ALLOWLIST: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
         ADMIN_EMAIL_LOGIN: 'true',
       },

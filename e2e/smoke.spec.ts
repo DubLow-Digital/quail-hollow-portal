@@ -137,6 +137,7 @@ test.describe('sign-in form', () => {
       }),
     );
     await page.goto('/login');
+    await page.getByRole('button', { name: 'First time here? Forgot your password?' }).click();
     await page.getByLabel('Email address').fill('not-an-email');
     await page.getByRole('button', { name: 'Email me a code' }).click();
     await expect(page.getByText('Please enter a valid email address.')).toBeVisible();
@@ -150,7 +151,7 @@ test.describe('sign-in form', () => {
     await expect(page.getByRole('button', { name: /Send a new code in/ })).toBeDisabled();
 
     await code.fill('123456');
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByText(/That code is not right or has expired/)).toBeVisible();
   });
 
@@ -163,9 +164,75 @@ test.describe('sign-in form', () => {
       }),
     );
     await page.goto('/login');
+    await page.getByRole('button', { name: 'First time here? Forgot your password?' }).click();
     await page.getByLabel('Email address').fill('test.client@example.com');
     await page.getByRole('button', { name: 'Email me a code' }).click();
     await expect(page.getByText(/Too many attempts/)).toBeVisible();
+  });
+
+  test('offers a passkey and email + password, and Google or Microsoft only when set up', async ({
+    page,
+  }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toBeVisible();
+    await expect(page.getByLabel('Password')).toHaveAttribute('autocomplete', 'current-password');
+    // This test server has no Google or Microsoft sign-in configured.
+    await expect(page.getByRole('link', { name: /Continue with (Google|Microsoft)/ })).toHaveCount(
+      0,
+    );
+  });
+
+  test('a password is followed by the authenticator code', async ({ page }) => {
+    await page.route('**/api/auth/client/password', async (route) => {
+      const body = route.request().postDataJSON() as { password: string };
+      await route.fulfill(
+        body.password === 'right password here'
+          ? {
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ ok: true, step: 'totp', factorId: crypto.randomUUID() }),
+            }
+          : {
+              status: 400,
+              contentType: 'application/json',
+              body: '{"error":"invalid_credentials"}',
+            },
+      );
+    });
+    await page.route('**/api/auth/client/mfa/totp', (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: '{"error":"invalid_code"}',
+      }),
+    );
+    await page.goto('/login');
+    await page.getByLabel('Email address').fill('test.client@example.com');
+    await page.getByLabel('Password').fill('wrong password');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByText(/do not match/)).toBeVisible();
+
+    await page.getByLabel('Password').fill('right password here');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    const totp = page.getByLabel('Authenticator code');
+    await expect(totp).toHaveAttribute('autocomplete', 'one-time-code');
+    await totp.fill('123456');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByText(/That code is not right/)).toBeVisible();
+  });
+
+  test('explains why a Google or Microsoft sign-in was refused', async ({ page }) => {
+    await page.goto('/login?sso=no_match');
+    await expect(page.getByText(/not on our list of people who can sign in/)).toBeVisible();
+    await page.goto('/login?sso=unverified');
+    await expect(page.getByText(/did not share a verified email/)).toBeVisible();
+  });
+
+  test('setup, sign-in options and people pages need a session', async ({ page }) => {
+    for (const path of ['/account/setup', '/people']) {
+      await page.goto(path);
+      await expect(page).toHaveURL(new RegExp(`/login\\?next=${encodeURIComponent(path)}`));
+    }
   });
 
   test('the office phone number is a tappable link', async ({ page }) => {
