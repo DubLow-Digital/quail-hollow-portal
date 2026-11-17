@@ -34,6 +34,7 @@ export type AuditAction =
   | 'upload.completed'
   | 'upload.failed'
   | 'upload.rejected'
+  | 'upload.viewed'
   | 'document_type.created'
   | 'document_type.updated'
   | 'bundle.created'

@@ -10,8 +10,15 @@ import { OFFICE_PHONE, OFFICE_PHONE_HREF } from '@/components/client/brand';
 
 export const metadata = { title: 'Send a document' };
 
-export default async function RequestPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RequestPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ file?: string }>;
+}) {
   const { id } = await params;
+  const { file: fileNotice } = await searchParams;
   if (!UUID_RE.test(id)) notFound();
   const { client, supabase } = await requireClient();
 
@@ -91,6 +98,16 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
         />
       )}
 
+      {fileNotice === 'unavailable' ? (
+        <Alert tone="warning" title="We could not open that file right now">
+          Please try again in a minute, or call{' '}
+          <a href={OFFICE_PHONE_HREF} className="font-medium underline">
+            {OFFICE_PHONE}
+          </a>
+          .
+        </Alert>
+      ) : null}
+
       {sent.length ? (
         <section aria-labelledby="sent-heading" className="space-y-2">
           <h2
@@ -105,8 +122,19 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
                 key={u.id}
                 className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-black/5"
               >
-                <span className="truncate">{u.final_filename}</span>
-                <span className="shrink-0 text-neutral-500">{formatDateTime(u.uploaded_at)}</span>
+                <span className="min-w-0">
+                  <span className="block truncate">{u.final_filename}</span>
+                  <span className="block text-neutral-500">{formatDateTime(u.uploaded_at)}</span>
+                </span>
+                <a
+                  href={`/api/uploads/${u.id}/view`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 font-medium text-brand-700 underline"
+                  aria-label={`View ${u.final_filename}`}
+                >
+                  View
+                </a>
               </li>
             ))}
           </ul>

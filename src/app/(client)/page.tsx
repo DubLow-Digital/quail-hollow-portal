@@ -6,8 +6,13 @@ import { Alert, Badge, EmptyState, cx } from '@/components/ui';
 
 export const metadata = { title: 'Your documents' };
 
-export default async function ChecklistPage() {
+export default async function ChecklistPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ file?: string }>;
+}) {
   const { client, supabase } = await requireClient();
+  const { file: fileNotice } = await searchParams;
 
   // Row level security limits this to the signed-in client's own requests.
   const { data: requests, error } = await supabase
@@ -30,6 +35,11 @@ export default async function ChecklistPage() {
 
   return (
     <div className="space-y-6">
+      {fileNotice === 'missing' ? (
+        <Alert tone="warning" title="That file is not available">
+          It may have been moved or removed by our office. Please call us if you need a copy.
+        </Alert>
+      ) : null}
       <div>
         <h1 className="font-serif text-2xl font-semibold text-brand-900">
           Hello, {client.first_name}
