@@ -29,6 +29,12 @@ export const LIMITS = {
   syncInboundPerIp: { bucket: 'sync_inbound_ip', max: 300, windowSeconds: 15 * 60 },
   ssoStartPerIp: { bucket: 'sso_start_ip', max: 30, windowSeconds: 15 * 60 },
   ssoCallbackPerIp: { bucket: 'sso_callback_ip', max: 30, windowSeconds: 15 * 60 },
+  passwordPerEmail: { bucket: 'password_email', max: 10, windowSeconds: 15 * 60 },
+  passwordPerIp: { bucket: 'password_ip', max: 30, windowSeconds: 15 * 60 },
+  mfaVerifyPerUser: { bucket: 'mfa_verify_user', max: 10, windowSeconds: 15 * 60 },
+  mfaVerifyPerIp: { bucket: 'mfa_verify_ip', max: 30, windowSeconds: 15 * 60 },
+  passkeyPerIp: { bucket: 'passkey_ip', max: 30, windowSeconds: 15 * 60 },
+  setupPerUser: { bucket: 'setup_user', max: 30, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, Limit>;
 
 export async function hitLimit(limit: Limit, identifier: string): Promise<boolean> {

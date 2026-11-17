@@ -105,6 +105,33 @@ export async function completeFullSignIn(opts: {
   return true;
 }
 
+/**
+ * Starts a Supabase session for an approved user after Google or Microsoft confirmed their
+ * verified email. Uses a one-time server-side token (never emailed, never shown) and checks
+ * the session belongs to that user.
+ */
+export async function startSessionForUser(
+  supabase: UserClient,
+  user: SignInUser,
+): Promise<boolean> {
+  const { data, error } = await serviceSupabase().auth.admin.generateLink({
+    type: 'magiclink',
+    email: user.email,
+  });
+  const tokenHash = data?.properties?.hashed_token;
+  if (error || !tokenHash || data.user?.id !== user.auth_user_id) {
+    log.error('client.sso_session_failed', { reason: error?.code ?? 'no_token' });
+    return false;
+  }
+  const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+  if (verified.error || verified.data.user?.id !== user.auth_user_id) {
+    if (verified.data?.user) await supabase.auth.signOut({ scope: 'local' });
+    log.error('client.sso_session_failed', { reason: verified.error?.code ?? 'mismatch' });
+    return false;
+  }
+  return true;
+}
+
 /** Withdraws the database approval of the current session (sign-out). */
 export async function revokeCurrentSession(supabase: UserClient): Promise<void> {
   const sessionId = await currentSessionId(supabase);
