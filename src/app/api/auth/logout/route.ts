@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { assertSameOrigin } from '@/lib/security/origin';
 import { createUserSupabase } from '@/lib/supabase/server';
-import { serviceSupabase } from '@/lib/supabase/admin';
+import { findSignInUserByAuthId } from '@/lib/clients/users';
+import { revokeCurrentSession } from '@/lib/auth/client-session';
 import { isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
 import { CLIENT_SESSION_COOKIE } from '@/lib/auth/session-policy';
 import { metaFromHeaders } from '@/lib/request-meta';
@@ -16,19 +17,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createUserSupabase();
     const { data } = await supabase.auth.getUser();
     if (data.user) {
-      const { data: client } = await serviceSupabase()
-        .from('clients')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .maybeSingle();
+      const user = await findSignInUserByAuthId(data.user.id);
+      await revokeCurrentSession(supabase);
       await supabase.auth.signOut({ scope: 'local' });
-      if (client) {
+      if (user) {
         await audit({
           actorType: 'client',
-          actorId: client.id,
+          actorId: user.id,
           action: 'client.logout',
           targetType: 'client',
-          targetId: client.id,
+          targetId: user.client_id,
           metadata: { reason },
           meta: metaFromHeaders(request.headers),
         });

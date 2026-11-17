@@ -42,6 +42,33 @@ async function record(
   });
 }
 
+/** Everyone approved to sign in for a client, each with their own first name. */
+async function approvedRecipients(
+  clientId: string,
+  fallback: { first_name: string; email: string },
+): Promise<{ firstName: string; email: string }[]> {
+  const { data } = await serviceSupabase()
+    .from('client_users')
+    .select('first_name, email')
+    .eq('client_id', clientId)
+    .neq('status', 'removed');
+  const people = (data ?? []).map((p) => ({ firstName: p.first_name, email: p.email }));
+  return people.length ? people : [{ firstName: fallback.first_name, email: fallback.email }];
+}
+
+async function sendToAll(
+  people: { firstName: string; email: string }[],
+  build: (firstName: string) => { subject: string; html: string; text: string },
+  tag: string,
+): Promise<boolean> {
+  let anyOk = false;
+  for (const person of people) {
+    const { ok } = await sendEmail({ to: [person.email], ...build(person.firstName), tag });
+    anyOk ||= ok;
+  }
+  return anyOk;
+}
+
 export async function notifyDocumentsRequested(
   actor: Actor,
   clientId: string,
@@ -69,14 +96,18 @@ export async function notifyDocumentsRequested(
       taxYear: r.tax_year,
       businessName: r.business_name,
     }));
-  const email = documentsRequestedEmail({
-    firstName: client.first_name,
-    items,
-    portalUrl: portalUrl(),
-    dueDate: options.dueDate ? formatDate(options.dueDate) : null,
-    note: options.note ?? null,
-  });
-  const { ok } = await sendEmail({ to: [client.email], ...email, tag: 'documents_requested' });
+  const ok = await sendToAll(
+    await approvedRecipients(clientId, client),
+    (firstName) =>
+      documentsRequestedEmail({
+        firstName,
+        items,
+        portalUrl: portalUrl(),
+        dueDate: options.dueDate ? formatDate(options.dueDate) : null,
+        note: options.note ?? null,
+      }),
+    'documents_requested',
+  );
   if (ok && !client.invited_at) {
     await db.from('clients').update({ invited_at: new Date().toISOString() }).eq('id', clientId);
   }
@@ -84,45 +115,68 @@ export async function notifyDocumentsRequested(
   return ok;
 }
 
-export async function notifyInvite(actor: Actor, clientId: string): Promise<boolean> {
+/** Invites one approved user (the client, or someone added for them) to the portal. */
+export async function notifyInvite(
+  actor: Actor,
+  userId: string,
+  options: { invitedBy?: string | null } = {},
+): Promise<boolean> {
   const db = serviceSupabase();
-  const [{ data: client }, { count }] = await Promise.all([
-    db.from('clients').select('id, first_name, email, status').eq('id', clientId).maybeSingle(),
-    db
-      .from('document_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('client_id', clientId)
-      .in('status', ['requested', 'redo']),
-  ]);
-  if (!client || client.status === 'archived') return false;
+  const { data: user } = await db
+    .from('client_users')
+    .select(
+      'id, client_id, first_name, last_name, email, status, clients(first_name, last_name, email, status)',
+    )
+    .eq('id', userId)
+    .maybeSingle();
+  const client = user?.clients;
+  if (!user || user.status === 'removed' || !client || client.status === 'archived') return false;
+  const { count } = await db
+    .from('document_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', user.client_id)
+    .in('status', ['requested', 'redo']);
+  const isClientThemselves = user.email === client.email.trim().toLowerCase();
   const email = inviteEmail({
-    firstName: client.first_name,
+    firstName: user.first_name,
     outstandingCount: count ?? 0,
     portalUrl: portalUrl(),
+    accountName: isClientThemselves ? null : `${client.first_name} ${client.last_name}`.trim(),
+    invitedBy: options.invitedBy ?? null,
   });
-  const { ok } = await sendEmail({ to: [client.email], ...email, tag: 'invite' });
-  if (ok)
-    await db.from('clients').update({ invited_at: new Date().toISOString() }).eq('id', clientId);
-  await record(actor, ok, 'invite', 'client', clientId);
+  const { ok } = await sendEmail({ to: [user.email], ...email, tag: 'invite' });
+  if (ok) {
+    const now = new Date().toISOString();
+    await db.from('client_users').update({ invited_at: now }).eq('id', user.id);
+    await db.from('clients').update({ invited_at: now }).eq('id', user.client_id);
+  }
+  await record(actor, ok, 'invite', 'client', user.client_id);
   return ok;
 }
 
 export async function notifyRedo(actor: Actor, requestId: string): Promise<boolean> {
   const { data: request } = await serviceSupabase()
     .from('document_requests')
-    .select('id, redo_note, tax_year, clients(first_name, email, status), document_types(name)')
+    .select(
+      'id, client_id, redo_note, tax_year, clients(first_name, email, status), document_types(name)',
+    )
     .eq('id', requestId)
     .maybeSingle();
   if (!request?.clients || request.clients.status === 'archived' || !request.redo_note)
     return false;
   const name = request.document_types?.name ?? 'a document';
-  const email = redoNeededEmail({
-    firstName: request.clients.first_name,
-    documentName: request.tax_year ? `${name} (${request.tax_year})` : name,
-    note: request.redo_note,
-    portalUrl: portalUrl(),
-  });
-  const { ok } = await sendEmail({ to: [request.clients.email], ...email, tag: 'redo_needed' });
+  const note = request.redo_note;
+  const ok = await sendToAll(
+    await approvedRecipients(request.client_id, request.clients),
+    (firstName) =>
+      redoNeededEmail({
+        firstName,
+        documentName: request.tax_year ? `${name} (${request.tax_year})` : name,
+        note,
+        portalUrl: portalUrl(),
+      }),
+    'redo_needed',
+  );
   await record(actor, ok, 'redo_needed', 'request', requestId);
   return ok;
 }

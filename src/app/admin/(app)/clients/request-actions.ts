@@ -171,11 +171,20 @@ export async function assignRequestsAction(
   };
 }
 
+/** Invites the client's main contact (the "Send invite" button on the requests card). */
 export async function sendInviteAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const admin = await requireAdmin();
   const clientId = str(form, 'client_id');
   if (!UUID_RE.test(clientId)) return { ok: false, message: 'Unknown client.' };
-  const ok = await notifyInvite({ actorType: 'admin', actorId: admin.aid }, clientId);
+  const { data: primary } = await serviceSupabase()
+    .from('client_users')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('role', 'primary')
+    .neq('status', 'removed')
+    .maybeSingle();
+  if (!primary) return { ok: false, message: 'This client has no main contact to invite.' };
+  const ok = await notifyInvite({ actorType: 'admin', actorId: admin.aid }, primary.id);
   if (ok) {
     await audit({
       actorType: 'admin',

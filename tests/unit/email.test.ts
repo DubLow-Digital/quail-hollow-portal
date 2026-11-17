@@ -29,8 +29,12 @@ describe('email templates', () => {
 
   it('never mention the systems behind the portal to clients', () => {
     for (const e of emails) {
-      const all = `${e.subject} ${e.html} ${e.text}`.toLowerCase();
-      for (const word of ['sharepoint', 'supabase', 'graph', 'microsoft', 'onedrive']) {
+      // "Microsoft" may appear only as a way to sign in (Continue with Microsoft).
+      const all = `${e.subject} ${e.html} ${e.text}`
+        .toLowerCase()
+        .replaceAll('continue with microsoft', '')
+        .replaceAll('google or microsoft account', '');
+      for (const word of ['sharepoint', 'supabase', 'graph', 'microsoft', 'onedrive', 'entra']) {
         expect(all).not.toContain(word);
       }
     }

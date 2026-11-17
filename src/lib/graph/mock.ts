@@ -9,7 +9,11 @@
 export function graphMockOrigin(
   env: Record<string, string | undefined> = process.env,
 ): string | null {
-  const value = env.E2E_GRAPH_MOCK_URL;
+  return loopbackOrigin(env.E2E_GRAPH_MOCK_URL);
+}
+
+/** The origin of a plain-http loopback URL, or null for anything else. */
+export function loopbackOrigin(value: string | undefined): string | null {
   if (!value) return null;
   try {
     const url = new URL(value);

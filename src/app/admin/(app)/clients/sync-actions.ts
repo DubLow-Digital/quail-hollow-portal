@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/admin';
 import { audit } from '@/lib/audit';
 import { str, UUID_RE, type ActionState } from '@/lib/actions';
-import { ensureAuthUser } from '@/lib/clients/auth-user';
+import { addApprovedUser } from '@/lib/clients/manage-users';
 import { requestMeta } from '@/lib/request-meta';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { log } from '@/lib/log';
@@ -106,13 +106,13 @@ export async function importClientAction(_prev: ActionState, form: FormData): Pr
     if (existing) return { ok: false, message: 'This person is already in the portal.' };
   }
 
-  let authUserId: string;
-  try {
-    authUserId = await ensureAuthUser(email.data);
-  } catch (err) {
-    log.error('client.auth_user_failed', { reason: (err as Error).name });
-    return { ok: false, message: 'Could not create the sign-in account. Please try again.' };
-  }
+  const { data: taken } = await db
+    .from('client_users')
+    .select('id')
+    .eq('email', email.data)
+    .neq('status', 'removed')
+    .maybeSingle();
+  if (taken) return { ok: false, message: 'This email can already sign in for another client.' };
 
   const { data, error } = await db
     .from('clients')
@@ -123,7 +123,6 @@ export async function importClientAction(_prev: ActionState, form: FormData): Pr
       phone: phone.success && phone.data ? phone.data : null,
       entity_types: entityTypesFor(candidate.client_type),
       status: 'invited',
-      auth_user_id: authUserId,
       notion_page_id: notionId,
       ghl_contact_id: ghlId,
     })
@@ -138,6 +137,17 @@ export async function importClientAction(_prev: ActionState, form: FormData): Pr
           ? 'This person is already in the portal.'
           : 'Could not save the client. Please try again.',
     };
+  }
+
+  const added = await addApprovedUser({
+    clientId: data.id,
+    person: { first_name: first.data, last_name: last.data, email: email.data },
+    role: 'primary',
+    addedByAdmin: admin.aid,
+  });
+  if (!added.ok) {
+    await db.from('clients').delete().eq('id', data.id);
+    return { ok: false, message: 'Could not create the sign-in account. Please try again.' };
   }
 
   await audit({

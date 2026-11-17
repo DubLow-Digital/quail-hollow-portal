@@ -23,13 +23,13 @@ describe('client session policy', () => {
   });
 
   it('accepts a fresh session', () => {
-    const value = issueClientSession(SECRET, UID, T0);
+    const value = issueClientSession(SECRET, UID, 'full', T0);
     const check = checkClientSession(SECRET, value, T0 + 60_000);
     expect(check.ok).toBe(true);
   });
 
   it('expires after 30 minutes idle', () => {
-    const value = issueClientSession(SECRET, UID, T0);
+    const value = issueClientSession(SECRET, UID, 'full', T0);
     expect(checkClientSession(SECRET, value, T0 + CLIENT_IDLE_MS - 1000).ok).toBe(true);
     expect(checkClientSession(SECRET, value, T0 + CLIENT_IDLE_MS + 1000)).toEqual({
       ok: false,
@@ -38,7 +38,7 @@ describe('client session policy', () => {
   });
 
   it('activity extends idle but never the 12 hour absolute limit', () => {
-    let value = issueClientSession(SECRET, UID, T0);
+    let value = issueClientSession(SECRET, UID, 'full', T0);
     let now = T0;
     // Simulate a request every 20 minutes for 13 hours.
     let expiredAt: number | null = null;
@@ -60,12 +60,12 @@ describe('client session policy', () => {
   it('rejects missing, forged and future-dated values', () => {
     expect(checkClientSession(SECRET, undefined, T0)).toEqual({ ok: false, reason: 'missing' });
     expect(checkClientSession(SECRET, 'garbage', T0)).toEqual({ ok: false, reason: 'invalid' });
-    const future = issueClientSession(SECRET, UID, T0 + 10 * 60 * 1000);
+    const future = issueClientSession(SECRET, UID, 'full', T0 + 10 * 60 * 1000);
     expect(checkClientSession(SECRET, future, T0)).toEqual({ ok: false, reason: 'invalid' });
   });
 
   it('cannot be used as an admin session', () => {
-    const value = issueClientSession(SECRET, UID, T0);
+    const value = issueClientSession(SECRET, UID, 'full', T0);
     expect(checkAdminSession(SECRET, value, T0).ok).toBe(false);
   });
 

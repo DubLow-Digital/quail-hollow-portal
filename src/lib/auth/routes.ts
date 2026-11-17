@@ -13,8 +13,21 @@ export function classifyPath(pathname: string): RouteArea {
   if (pathname === '/') return 'client';
   if (pathname === '/request' || pathname.startsWith('/request/')) return 'client';
   if (pathname.startsWith('/api/uploads/')) return 'client';
+  if (pathname === '/account' || pathname.startsWith('/account/')) return 'client';
+  if (pathname === '/people' || pathname.startsWith('/people/')) return 'client';
+  if (pathname.startsWith('/api/auth/client/setup/')) return 'client';
 
   return 'public';
+}
+
+/**
+ * Where a client session that is only at the `setup` level (signed in with an emailed code)
+ * may go: the setup screen and its API. Everything else in the client area needs a full
+ * sign-in.
+ */
+export const SETUP_PATH = '/account/setup';
+export function setupAllowed(pathname: string): boolean {
+  return pathname === SETUP_PATH || pathname.startsWith('/api/auth/client/setup/');
 }
 
 /**

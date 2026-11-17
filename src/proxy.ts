@@ -15,7 +15,7 @@ import {
   touchClientSession,
 } from '@/lib/auth/session-policy';
 import { SUPABASE_COOKIE_OPTIONS, isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
-import { classifyPath, safeNextPath } from '@/lib/auth/routes';
+import { SETUP_PATH, classifyPath, safeNextPath, setupAllowed } from '@/lib/auth/routes';
 import { log } from '@/lib/log';
 
 /**
@@ -121,6 +121,16 @@ export async function proxy(request: NextRequest) {
     }
     res.cookies.delete(CLIENT_SESSION_COOKIE);
     return res;
+  }
+
+  // Signed in with only an emailed code: the setup screen is the only way forward.
+  if (check.session.m !== 'full' && !setupAllowed(pathname)) {
+    log.warn('auth.session_denied', { route: 'client', reason: 'setup_required' });
+    const res = isPageGet
+      ? NextResponse.redirect(new URL(SETUP_PATH, request.url))
+      : NextResponse.json({ error: 'setup_required' }, { status: 403 });
+    for (const c of response.cookies.getAll()) res.cookies.set(c);
+    return withCsp(res, csp);
   }
 
   response.cookies.set(CLIENT_SESSION_COOKIE, touchClientSession(secret, check.session), {

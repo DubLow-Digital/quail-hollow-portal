@@ -51,6 +51,17 @@ refresh_token_reuse_interval = 10
 enable_signup = false
 enable_anonymous_sign_ins = false
 
+# Passkey sign-in (Face ID, Touch ID, Windows Hello, a phone or a security key).
+[auth.passkey]
+enabled = true
+
+# Relying party for passkeys: the portal's own address. Production sets these in the
+# dashboard to the portal domain (see docs/client-sign-in-setup.md).
+[auth.webauthn]
+rp_display_name = "Quail Hollow Accounting"
+rp_id = "localhost"
+rp_origins = ["http://localhost:3000", "http://localhost:3200"]
+
 [auth.rate_limit]
 email_sent = 30
 token_verifications = 30
@@ -70,6 +81,14 @@ otp_expiry = 600
 [auth.email.template.magic_link]
 subject = "Your Quail Hollow sign-in code"
 content_path = "./supabase/templates/magic_link.html"
+
+# Authenticator apps (TOTP) as the second step after a password.
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
 
 [auth.external.apple]
 enabled = false

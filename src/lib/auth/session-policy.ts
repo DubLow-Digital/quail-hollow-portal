@@ -22,6 +22,8 @@ const isProd = process.env.NODE_ENV === 'production';
 export const CLIENT_SESSION_COOKIE = isProd ? '__Host-qh_cs' : 'qh_cs';
 export const ADMIN_SESSION_COOKIE = isProd ? '__Host-qh_as' : 'qh_as';
 export const ADMIN_OAUTH_COOKIE = isProd ? '__Host-qh_oauth' : 'qh_oauth';
+/** Short-lived state for client sign-in with Google or Microsoft. */
+export const CLIENT_OAUTH_COOKIE = isProd ? '__Host-qh_coauth' : 'qh_coauth';
 
 export const sessionCookieOptions = {
   httpOnly: true,
@@ -30,9 +32,18 @@ export const sessionCookieOptions = {
   path: '/',
 };
 
+/**
+ * `full`: signed in with Google, Microsoft, a passkey, or a password plus an authenticator
+ * code. `setup`: signed in with only an emailed code (first-time setup or recovery); such a
+ * session can only reach the setup screen and its API, and its database token reads nothing.
+ * Cookies issued before levels existed count as `setup`.
+ */
+export type ClientSessionLevel = 'full' | 'setup';
+
 const clientSessionSchema = z.object({
   v: z.literal(1),
   uid: z.uuid(),
+  m: z.enum(['full', 'setup']).default('setup'),
   iat: z.number().int(),
   lat: z.number().int(),
 });
@@ -68,8 +79,13 @@ function evaluate<T extends { iat: number; lat: number }>(
   return { ok: true, session: parsed };
 }
 
-export function issueClientSession(secret: string, uid: string, now = Date.now()): string {
-  const payload: ClientSession = { v: 1, uid, iat: now, lat: now };
+export function issueClientSession(
+  secret: string,
+  uid: string,
+  level: ClientSessionLevel,
+  now = Date.now(),
+): string {
+  const payload: ClientSession = { v: 1, uid, m: level, iat: now, lat: now };
   return signValue(secret, CLIENT_SESSION_COOKIE, payload);
 }
 

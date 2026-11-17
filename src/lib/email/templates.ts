@@ -102,30 +102,40 @@ export function inviteEmail(input: {
   firstName: string;
   outstandingCount: number;
   portalUrl: string;
+  /** Whose documents this is, when the person invited is not the client themselves. */
+  accountName?: string | null;
+  /** Who added them, when it was the client's main contact. */
+  invitedBy?: string | null;
 }): Rendered {
   const subject = 'Your secure document portal at Quail Hollow Accounting';
+  const intro = input.accountName
+    ? `${input.invitedBy ? `${escapeHtml(input.invitedBy)} added you` : 'You have been added'} to the secure document portal for <strong>${escapeHtml(input.accountName)}</strong> at Quail Hollow Accounting, so you can send documents on their behalf.`
+    : 'Quail Hollow Accounting uses a secure portal for your documents, so nothing sensitive has to travel by email.';
+  const introText = input.accountName
+    ? `${input.invitedBy ? `${input.invitedBy} added you` : 'You have been added'} to the secure document portal for ${input.accountName} at Quail Hollow Accounting, so you can send documents on their behalf.`
+    : 'Quail Hollow Accounting uses a secure portal for your documents, so nothing sensitive has to travel by email.';
   const waiting =
     input.outstandingCount > 0
-      ? `<p>You have <strong>${input.outstandingCount}</strong> document${input.outstandingCount === 1 ? '' : 's'} waiting to be sent.</p>`
+      ? `<p>There ${input.outstandingCount === 1 ? 'is' : 'are'} <strong>${input.outstandingCount}</strong> document${input.outstandingCount === 1 ? '' : 's'} waiting to be sent.</p>`
       : '';
   const html = layout(
     subject,
     `<p>Hello ${escapeHtml(input.firstName)},</p>
-<p>Quail Hollow Accounting uses a secure portal for your documents, so nothing sensitive has to travel by email.</p>${waiting}
+<p>${intro}</p>${waiting}
 ${button(input.portalUrl, 'Open your secure portal')}
-<p style="font-size:14px;color:#555;">To sign in, enter this email address and we will send you a one-time code. No password needed.</p>
+<p style="font-size:14px;color:#555;"><strong>How to sign in:</strong> if this email address is a Google or Microsoft account, choose <em>Continue with Google</em> or <em>Continue with Microsoft</em>. Otherwise choose <em>First time here?</em>: we email you a code, then you set up a passkey (Face ID, fingerprint or your phone) or a password with an authenticator app.</p>
 <p>Thank you,<br>${FIRM_NAME}</p>`,
   );
   const text = [
     `Hello ${input.firstName},`,
     '',
-    'Quail Hollow Accounting uses a secure portal for your documents, so nothing sensitive has to travel by email.',
+    introText,
     input.outstandingCount > 0
-      ? `You have ${input.outstandingCount} document(s) waiting to be sent.`
+      ? `There ${input.outstandingCount === 1 ? 'is' : 'are'} ${input.outstandingCount} document(s) waiting to be sent.`
       : '',
     '',
     `Open your portal: ${input.portalUrl}`,
-    'To sign in, enter this email address and we will send you a one-time code.',
+    'How to sign in: if this email address is a Google or Microsoft account, choose Continue with Google or Continue with Microsoft. Otherwise choose "First time here?": we email you a code, then you set up a passkey or a password with an authenticator app.',
     '',
     `Thank you,\n${FIRM_NAME}\nQuestions? Call ${OFFICE_PHONE}.`,
   ]

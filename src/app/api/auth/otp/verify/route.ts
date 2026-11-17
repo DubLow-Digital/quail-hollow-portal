@@ -4,16 +4,10 @@ import { assertSameOrigin } from '@/lib/security/origin';
 import { hitLimits, LIMITS } from '@/lib/security/rate-limit';
 import { metaFromHeaders } from '@/lib/request-meta';
 import { createUserSupabase } from '@/lib/supabase/server';
-import { serviceSupabase } from '@/lib/supabase/admin';
-import { appEnv } from '@/lib/env';
 import { audit } from '@/lib/audit';
-import { safeNextPath } from '@/lib/auth/routes';
-import {
-  CLIENT_ABSOLUTE_MS,
-  CLIENT_SESSION_COOKIE,
-  issueClientSession,
-  sessionCookieOptions,
-} from '@/lib/auth/session-policy';
+import { SETUP_PATH } from '@/lib/auth/routes';
+import { setClientSessionCookie } from '@/lib/auth/client-session';
+import { findSignInUserByEmail } from '@/lib/clients/users';
 
 const bodySchema = z.object({
   email: z.email().max(254),
@@ -26,7 +20,10 @@ const bodySchema = z.object({
 
 const GENERIC_FAILURE = { error: 'invalid_code' };
 
-/** Verifies a one-time code, starts the Supabase session and the portal session cookie. */
+/**
+ * Verifies an emailed one-time code. The code proves the email address only, so it starts a
+ * setup-level session: first-time setup or recovery happens on the setup screen.
+ */
 export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
@@ -56,20 +53,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const db = serviceSupabase();
-  const { data: client } = await db
-    .from('clients')
-    .select('id, status, auth_user_id')
-    .eq('email', email)
-    .maybeSingle();
-
+  const user = await findSignInUserByEmail(email);
   const supabase = await createUserSupabase();
-  if (!client || client.status === 'archived' || !client.auth_user_id) {
+  if (!user) {
     await audit({
       actorType: 'system',
       actorId: null,
       action: 'client.login_failed',
-      metadata: { reason: 'unknown' },
+      metadata: { reason: 'unknown', method: 'code' },
       meta,
     });
     return NextResponse.json(GENERIC_FAILURE, { status: 400 });
@@ -80,45 +71,31 @@ export async function POST(request: NextRequest) {
     token: input.code,
     type: 'email',
   });
-  if (error || !data.user || data.user.id !== client.auth_user_id) {
+  if (error || !data.user || data.user.id !== user.auth_user_id) {
     if (data?.user) await supabase.auth.signOut({ scope: 'local' });
     await audit({
       actorType: 'client',
-      actorId: client.id,
+      actorId: user.id,
       action: 'client.login_failed',
       targetType: 'client',
-      targetId: client.id,
-      metadata: { reason: error?.code ?? 'mismatch' },
+      targetId: user.client_id,
+      metadata: { reason: error?.code ?? 'mismatch', method: 'code' },
       meta,
     });
     return NextResponse.json(GENERIC_FAILURE, { status: 400 });
   }
 
-  const now = new Date().toISOString();
-  await db
-    .from('clients')
-    .update({
-      last_login_at: now,
-      ...(client.status === 'invited' ? { status: 'active' as const } : {}),
-    })
-    .eq('id', client.id);
+  // An emailed code proves the email address only. It starts first-time setup or recovery;
+  // the full sign-in happens on the setup screen (passkey, or password + authenticator).
   await audit({
     actorType: 'client',
-    actorId: client.id,
-    action: 'client.login',
+    actorId: user.id,
+    action: 'client.setup_started',
     targetType: 'client',
-    targetId: client.id,
+    targetId: user.client_id,
     meta,
   });
-
-  const next = safeNextPath(input.next ?? null);
-  const res = NextResponse.json({
-    ok: true,
-    redirect: next && !next.startsWith('/admin') ? next : '/',
-  });
-  res.cookies.set(CLIENT_SESSION_COOKIE, issueClientSession(appEnv().AUTH_SECRET, data.user.id), {
-    ...sessionCookieOptions,
-    maxAge: Math.floor(CLIENT_ABSOLUTE_MS / 1000),
-  });
+  const res = NextResponse.json({ ok: true, redirect: SETUP_PATH });
+  setClientSessionCookie(res, data.user.id, 'setup');
   return res;
 }
