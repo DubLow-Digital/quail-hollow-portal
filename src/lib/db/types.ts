@@ -108,6 +108,7 @@ export type Database = {
           accepted_mime: string[];
           max_mb: number;
           requires_year: boolean;
+          requires_front_back: boolean;
           active: boolean;
           sort_order: number;
           created_at: string;
@@ -123,6 +124,7 @@ export type Database = {
           accepted_mime?: string[];
           max_mb?: number;
           requires_year?: boolean;
+          requires_front_back?: boolean;
           active?: boolean;
           sort_order?: number;
           created_at?: string;

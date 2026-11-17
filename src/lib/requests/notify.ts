@@ -11,6 +11,7 @@ import {
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { formatDate } from '@/lib/status';
 import type { ActorType } from '@/lib/db/types';
+import { documentLabel } from '@/lib/requests/document-label';
 
 /**
  * Notification emails. Each send is recorded in the audit log (email.sent / email.failed)
@@ -84,7 +85,7 @@ export async function notifyDocumentsRequested(
       .maybeSingle(),
     db
       .from('document_requests')
-      .select('tax_year, business_name, document_types(name, sort_order)')
+      .select('tax_year, business_name, document_types(name, sort_order, requires_front_back)')
       .in('id', requestIds),
   ]);
   if (!client || client.status === 'archived' || !requests?.length) return false;
@@ -92,7 +93,7 @@ export async function notifyDocumentsRequested(
   const items = requests
     .sort((a, b) => (a.document_types?.sort_order ?? 0) - (b.document_types?.sort_order ?? 0))
     .map((r) => ({
-      name: r.document_types?.name ?? 'Document',
+      name: documentLabel(r.document_types),
       taxYear: r.tax_year,
       businessName: r.business_name,
     }));
@@ -158,13 +159,13 @@ export async function notifyRedo(actor: Actor, requestId: string): Promise<boole
   const { data: request } = await serviceSupabase()
     .from('document_requests')
     .select(
-      'id, client_id, redo_note, tax_year, clients(first_name, email, status), document_types(name)',
+      'id, client_id, redo_note, tax_year, clients(first_name, email, status), document_types(name, requires_front_back)',
     )
     .eq('id', requestId)
     .maybeSingle();
   if (!request?.clients || request.clients.status === 'archived' || !request.redo_note)
     return false;
-  const name = request.document_types?.name ?? 'a document';
+  const name = documentLabel(request.document_types, 'a document');
   const note = request.redo_note;
   const ok = await sendToAll(
     await approvedRecipients(request.client_id, request.clients),
@@ -185,7 +186,7 @@ export async function notifyNewUpload(uploadId: string): Promise<boolean> {
   const { data: upload } = await serviceSupabase()
     .from('uploads')
     .select(
-      'id, client_id, clients(first_name, last_name), document_requests(tax_year, document_types(name))',
+      'id, client_id, clients(first_name, last_name), document_requests(tax_year, document_types(name, requires_front_back))',
     )
     .eq('id', uploadId)
     .maybeSingle();
@@ -198,7 +199,7 @@ export async function notifyNewUpload(uploadId: string): Promise<boolean> {
   }
   const email = newUploadEmail({
     clientName: `${upload.clients.first_name} ${upload.clients.last_name}`,
-    documentName: upload.document_requests?.document_types?.name ?? 'a document',
+    documentName: documentLabel(upload.document_requests?.document_types, 'a document'),
     taxYear: upload.document_requests?.tax_year ?? null,
     adminUrl: `${appEnv().APP_BASE_URL}/admin/clients/${upload.client_id}`,
   });

@@ -321,6 +321,27 @@ describe('document types', () => {
     );
     expect(code).toBe('42501');
   });
+
+  it('a client can read whether a document needs front and back', async () => {
+    const rows = await asRole(client, 'authenticated', USER_A, (q) =>
+      q('select name, requires_front_back from document_types where id = $1', [
+        ids.type_DriversLicense,
+      ]),
+    );
+    expect(rows.rows).toEqual([{ name: "Driver's License", requires_front_back: true }]);
+  });
+
+  it('the starting license type keeps asking for both sides; other types do not', async () => {
+    const rows = await client.query(
+      'select slug_for_filename, description, requires_front_back from document_types',
+    );
+    const dl = rows.rows.find((r) => r.slug_for_filename === 'DriversLicense');
+    expect(dl.requires_front_back).toBe(true);
+    expect(dl.description).not.toMatch(/front|back/i);
+    const others = rows.rows.filter((r) => r.slug_for_filename !== 'DriversLicense');
+    expect(others.length).toBeGreaterThan(0);
+    expect(others.every((r) => r.requires_front_back === false)).toBe(true);
+  });
 });
 
 describe('uploads', () => {

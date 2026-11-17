@@ -7,6 +7,7 @@ import { REQUEST_STATUS, formatDate, formatDateTime } from '@/lib/status';
 import { Alert, Badge } from '@/components/ui';
 import { UploadPanel } from '@/components/client/upload-panel';
 import { OFFICE_PHONE, OFFICE_PHONE_HREF } from '@/components/client/brand';
+import { documentLabel } from '@/lib/requests/document-label';
 
 export const metadata = { title: 'Send a document' };
 
@@ -26,7 +27,7 @@ export default async function RequestPage({
   const { data: req } = await supabase
     .from('document_requests')
     .select(
-      'id, status, tax_year, business_name, note_to_client, redo_note, due_date, document_types(name, description, accepted_mime, max_mb), uploads(id, final_filename, status, uploaded_at)',
+      'id, status, tax_year, business_name, note_to_client, redo_note, due_date, document_types(name, description, accepted_mime, max_mb, requires_front_back), uploads(id, final_filename, status, uploaded_at)',
     )
     .eq('id', id)
     .maybeSingle();
@@ -40,7 +41,7 @@ export default async function RequestPage({
   const ready = Boolean(folder?.sharepoint_folder_id);
 
   const type = req.document_types;
-  const title = `${type.name}${req.tax_year ? ` (${req.tax_year})` : ''}`;
+  const title = `${documentLabel(type)}${req.tax_year ? ` (${req.tax_year})` : ''}`;
   const sent = req.uploads
     .filter((u) => u.status === 'complete')
     .sort((a, b) => (b.uploaded_at ?? '').localeCompare(a.uploaded_at ?? ''));
@@ -64,6 +65,14 @@ export default async function RequestPage({
           <p className="text-sm text-neutral-600">Due {formatDate(req.due_date)}</p>
         ) : null}
         {type.description ? <p className="text-neutral-700">{type.description}</p> : null}
+        {type.requires_front_back ? (
+          <p className="font-medium text-brand-900">
+            Please send both sides, the front and the back.
+            {type.accepted_mime.includes('application/pdf')
+              ? ' Scan document captures them together as one file.'
+              : ''}
+          </p>
+        ) : null}
         {req.note_to_client ? (
           <div className="rounded-xl bg-brand-50 p-3 text-sm text-brand-900">
             <p className="font-medium">Note from Quail Hollow</p>
@@ -95,6 +104,7 @@ export default async function RequestPage({
           documentName={type.name}
           acceptedMime={type.accepted_mime}
           maxMb={type.max_mb}
+          requiresFrontBack={type.requires_front_back}
         />
       )}
 

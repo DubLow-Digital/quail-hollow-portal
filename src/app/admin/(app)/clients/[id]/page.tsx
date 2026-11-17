@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/admin';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/actions';
+import { documentLabel } from '@/lib/requests/document-label';
 import {
   CLIENT_STATUS,
   REQUEST_STATUS,
@@ -70,7 +71,7 @@ export default async function ClientDetailPage({
       db
         .from('document_requests')
         .select(
-          'id, status, tax_year, business_name, note_to_client, redo_note, requested_at, due_date, status_changed_at, document_types(name, sort_order), uploads(id, final_filename, size_bytes, page_count, capture_method, status, uploaded_at, started_at, sharepoint_web_url, failure_reason, sender:client_users(first_name, last_name))',
+          'id, status, tax_year, business_name, note_to_client, redo_note, requested_at, due_date, status_changed_at, document_types(name, sort_order, requires_front_back), uploads(id, final_filename, size_bytes, page_count, capture_method, status, uploaded_at, started_at, sharepoint_web_url, failure_reason, sender:client_users(first_name, last_name))',
         )
         .eq('client_id', id)
         .order('requested_at', { ascending: false }),
@@ -343,7 +344,7 @@ export default async function ClientDetailPage({
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-medium text-brand-900">
-                        {r.document_types?.name ?? 'Document'}
+                        {documentLabel(r.document_types)}
                         {r.tax_year ? ` (${r.tax_year})` : ''}
                         {r.business_name ? ` · ${r.business_name}` : ''}
                       </p>

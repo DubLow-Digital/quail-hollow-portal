@@ -16,7 +16,7 @@ export default async function DocumentTypesPage({
   const { data: types } = await serviceSupabase()
     .from('document_types')
     .select(
-      'id, name, slug_for_filename, target_subfolder, accepted_mime, max_mb, requires_year, active',
+      'id, name, slug_for_filename, target_subfolder, accepted_mime, max_mb, requires_year, requires_front_back, active',
     )
     .order('sort_order')
     .order('name');
@@ -56,6 +56,7 @@ export default async function DocumentTypesPage({
                   </div>
                   <div className="flex gap-2">
                     {t.requires_year ? <Badge tone="blue">Tax year</Badge> : null}
+                    {t.requires_front_back ? <Badge tone="blue">Front &amp; back</Badge> : null}
                     {t.active ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}
                   </div>
                 </Link>
