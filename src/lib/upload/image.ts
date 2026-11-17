@@ -6,7 +6,7 @@
 export const SCAN_MAX_EDGE = 1600;
 export const PHOTO_MAX_EDGE = 2400;
 
-type Drawable = ImageBitmap | HTMLImageElement | HTMLVideoElement;
+type Drawable = ImageBitmap | HTMLImageElement | HTMLVideoElement | HTMLCanvasElement;
 
 function dims(source: Drawable): { w: number; h: number } {
   if (source instanceof HTMLVideoElement) return { w: source.videoWidth, h: source.videoHeight };

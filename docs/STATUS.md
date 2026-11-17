@@ -122,8 +122,10 @@ Still to do:
 
 ## Phase 1b / later
 
-- Automatic page edge detection and perspective crop in Scan mode (`jscanify`, loaded only on
-  the scan screen)
+- ~~Automatic page edge detection and perspective crop~~ Done Nov 17 with Scanic (MIT,
+  WebAssembly, ~100 KB) instead of jscanify (OpenCV.js, ~30 MB): live green outline in Take
+  photo and Scan document, auto-crop and straighten on capture, "Use whole photo" option.
+  Next: a manual corner editor if clients need it.
 - Scheduled cleanup of uploads abandoned in the browser (currently labeled "Did not finish")
 - Out of scope for Phase 1 per the brief: locked fillable forms (check roster), delivering
   finished documents to clients, QuickBooks, e-signature, payments

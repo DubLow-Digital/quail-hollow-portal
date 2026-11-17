@@ -51,6 +51,9 @@ export function buildContentSecurityPolicy({
       "'self'",
       `'nonce-${nonce}'`,
       "'strict-dynamic'",
+      // The document scanner's edge detector is WebAssembly bundled with our own script
+      // (no remote code): this allows compiling it, nothing else.
+      "'wasm-unsafe-eval'",
       ...(isDev ? ["'unsafe-eval'"] : []),
     ],
     // Development tooling injects unhashed inline styles; production does not.

@@ -13,6 +13,7 @@ import { MAX_PAGE_COUNT, canonicalExtension, checkFileAgainstRules } from '@/lib
 import { NamingTemplateError, buildFilename } from '@/lib/naming/filename';
 import { FolderPathError, resolveSubfolder } from '@/lib/naming/folders';
 import { createUploadSession, ensureFolderPath } from '@/lib/graph/drive';
+import { GraphError } from '@/lib/graph/client';
 import { DEFAULT_CHUNK_SIZE } from '@/lib/upload/chunked-upload';
 
 const bodySchema = z.object({
@@ -126,14 +127,25 @@ export async function POST(request: NextRequest) {
   let folderId: string;
   let uploadUrl: string;
   let expiresAt: string;
+  let step: 'folder' | 'session' = 'folder';
   try {
     const folder = await ensureFolderPath(client.sharepoint_folder_id, segments);
     folderId = folder.id;
+    step = 'session';
     const session = await createUploadSession(folderId, filename, input.size);
     uploadUrl = session.uploadUrl;
     expiresAt = session.expirationDateTime;
   } catch (err) {
-    log.error('upload.session_failed', { requestId: req.id, reason: (err as Error).name });
+    // IDs, step and Graph status/code only: never names, paths or URLs.
+    log.error('upload.session_failed', {
+      requestId: req.id,
+      step,
+      reason: (err as Error).name,
+      ...(err instanceof GraphError ? { statusCode: err.status, graphCode: err.code } : {}),
+      mime: input.mime,
+      captureMethod: input.captureMethod,
+      folderDepth: segments.length,
+    });
     return fail(502, 'storage_unavailable');
   }
 

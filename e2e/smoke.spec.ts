@@ -19,7 +19,9 @@ test.describe('security headers', () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("connect-src 'self' https://example.sharepoint.com");
     expect(csp).not.toContain('unsafe-inline');
-    expect(csp).not.toContain('unsafe-eval');
+    // WebAssembly compilation for the document scanner only; JavaScript eval stays blocked.
+    expect(csp).toContain("'wasm-unsafe-eval'");
+    expect(csp).not.toMatch(/(^|\s)'unsafe-eval'/);
     expect(h['strict-transport-security']).toContain('max-age=63072000');
     expect(h['x-frame-options']).toBe('DENY');
     expect(h['referrer-policy']).toBe('no-referrer');

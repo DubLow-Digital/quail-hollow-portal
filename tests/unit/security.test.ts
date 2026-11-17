@@ -17,8 +17,9 @@ describe('content security policy', () => {
       isDev: false,
       sharePointHost: 'example.sharepoint.com',
     });
-    expect(csp).toContain(`script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`);
-    expect(csp).not.toContain('unsafe-eval');
+    expect(csp).toContain(`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`);
+    // Only WebAssembly compilation is allowed, never JavaScript eval.
+    expect(csp).not.toMatch(/(^|\s)'unsafe-eval'/);
     expect(csp).not.toContain('unsafe-inline');
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");

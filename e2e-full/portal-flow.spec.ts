@@ -193,6 +193,34 @@ test('a 40 MB PDF uploads in chunks and keeps the earlier file', async () => {
   expect(big?.size).toBe(40 * 1024 * 1024 + 22);
 });
 
+test('Take photo uses the in-browser camera with review before sending', async () => {
+  // A freshly opened request page shows the upload choices straight away.
+  await todd.goto(`/request/${ids.toddBank}`);
+  const before = new Set((await mockFiles()).map((f) => f.path));
+  await todd.getByRole('button', { name: /Take photo/ }).click();
+  const camera = todd.getByRole('dialog', { name: 'Take photo' });
+  await camera.getByRole('button', { name: 'Take picture' }).click({ timeout: 20_000 });
+  // Review screen: the picture can be retaken before it is used.
+  await camera.getByRole('button', { name: 'Retake' }).click();
+  await camera.getByRole('button', { name: 'Take picture' }).click({ timeout: 20_000 });
+  await camera.getByRole('button', { name: 'Use photo' }).click();
+  await expect(camera).toBeHidden();
+  await expect(todd.getByText(/^Photo/)).toBeVisible();
+  await todd.getByRole('button', { name: 'Send to Quail Hollow' }).click();
+  await expect(todd.getByText(`Thank you! We received your ${BANK}.`)).toBeVisible({
+    timeout: 60_000,
+  });
+
+  // Exactly one new file, named the firm's way, in the same folder as the earlier scans.
+  const added = (await mockFiles()).filter((f) => !before.has(f.path));
+  expect(added.map((f) => f.path)).toHaveLength(1);
+  expect(added[0]!.path).toMatch(
+    new RegExp(
+      `^Clients/Test, Todd/Individual/Income Documents/2025/TTest_BankStatement_2025_${firmDate()}( \\d+)?\\.(jpg|pdf)$`,
+    ),
+  );
+});
+
 test("a client cannot see or upload to another client's request", async () => {
   // The page: not found, not "forbidden", so it does not even confirm the request exists.
   await todd.goto(`/request/${ids.samDl}`);
@@ -479,7 +507,8 @@ test('no file bytes, sign-in codes or upload links are stored', async () => {
   const uploads = await adminRest<
     { size_bytes: number; sharepoint_item_id: string; status: string }[]
   >(`uploads?select=size_bytes,sharepoint_item_id,status&client_id=eq.${ids.todd}`);
-  expect(uploads.filter((u) => u.status === 'complete')).toHaveLength(3);
+  // License photo, 3-page scan, 40 MB PDF and the in-browser camera photo.
+  expect(uploads.filter((u) => u.status === 'complete')).toHaveLength(4);
   expect(
     uploads.every((u) => u.status !== 'complete' || (u.sharepoint_item_id && u.size_bytes > 0)),
   ).toBe(true);
