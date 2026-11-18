@@ -43,7 +43,7 @@ test.describe('security headers', () => {
 });
 
 test.describe('public pages render without CSP violations', () => {
-  for (const path of ['/login', '/admin/signin']) {
+  for (const path of ['/login', '/admin/signin', '/continue']) {
     test(path, async ({ page }) => {
       const violations = trackCspViolations(page);
       await page.goto(path, { waitUntil: 'networkidle' });
@@ -56,6 +56,12 @@ test.describe('public pages render without CSP violations', () => {
       expect(overflow).toBeLessThanOrEqual(0);
     });
   }
+});
+
+test('a "continue on your phone" link without a code explains itself', async ({ page }) => {
+  await page.goto('/continue');
+  await expect(page.getByText('This link did not work')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in on this phone' })).toBeVisible();
 });
 
 test.describe('route protection', () => {

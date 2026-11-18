@@ -242,6 +242,101 @@ test('the client can view a file they sent, straight from SharePoint', async () 
   expect(other.headers().location).toContain('/?file=missing');
 });
 
+test('Continue on your phone: a QR code signs the phone in to that one item, and the computer sees the file arrive', async ({
+  browser,
+}) => {
+  // Todd on a computer (the code is offered on large screens only).
+  const desk = await (
+    await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  ).newPage();
+  await signInWithPassword(desk, TODD.email, TODD_PASSWORD, toddSecret);
+  await desk.waitForURL((u) => !u.pathname.startsWith('/login'));
+  await desk.goto(`/request/${ids.toddBank}`);
+  const card = desk.getByTestId('phone-handoff');
+  await card.getByRole('button', { name: 'Show a code for my phone' }).click();
+  await expect(
+    card.getByRole('img', { name: 'QR code to open this item on your phone' }),
+  ).toBeVisible();
+  const url = await card.locator('[data-handoff-url]').getAttribute('data-handoff-url');
+  expect(url).toMatch(/\/continue#\S+$/);
+  // The code travels in the fragment, so no server ever logs it.
+  expect(new URL(url!).search).toBe('');
+
+  // The phone opens the link: signed in, on that item, with nothing else in reach.
+  const phone = await (await phoneContext(browser)).newPage();
+  await phone.goto(url!);
+  await phone.waitForURL(new RegExp(`/request/${ids.toddBank}$`));
+  await expect(
+    phone.getByText('You are signed in on this phone to send this item only.'),
+  ).toBeVisible();
+  await expect(phone.getByRole('link', { name: '← Back to my list' })).toHaveCount(0);
+  for (const path of ['/', '/people', `/request/${ids.toddDl}`]) {
+    await phone.goto(path);
+    await expect(phone).toHaveURL(new RegExp(`/request/${ids.toddBank}$`));
+  }
+  const elsewhere = await phone.evaluate(
+    async ([other, own]) => {
+      const start = await fetch('/api/uploads/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: other,
+          mime: 'application/pdf',
+          size: 1000,
+          captureMethod: 'file',
+        }),
+      });
+      const people = await fetch('/api/auth/client/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: own }),
+      });
+      return [start.status, people.status];
+    },
+    [ids.toddDl!, ids.toddBank!],
+  );
+  // Another item's upload is refused, and the phone cannot make codes of its own.
+  expect(elsewhere).toEqual([403, 403]);
+
+  // Send a file from the phone.
+  const pdf = await PDFDocument.create();
+  pdf.addPage([300, 400]);
+  await phone.locator('input[type=file]:not([capture])').setInputFiles({
+    name: 'statement.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(await pdf.save()),
+  });
+  await phone.getByRole('button', { name: 'Send to Quail Hollow' }).click();
+  await expect(phone.getByText(`Thank you! We received your ${BANK}.`)).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(phone.getByText(/your computer shows it too/)).toBeVisible();
+  await expect(phone.getByRole('link', { name: 'Back to my list' })).toHaveCount(0);
+
+  // The computer notices on its own.
+  await expect(desk.getByText('Received from your phone. Thank you!')).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // The code works once, and the landing page drops it from the address bar.
+  const again = await (await phoneContext(browser)).newPage();
+  await again.goto(url!);
+  await expect(again.getByText('This code was already used')).toBeVisible();
+  await expect(again).toHaveURL(/\/continue$/);
+
+  type Row = { action: string; metadata: Record<string, unknown> | null };
+  const audit = await adminRest<Row[]>(
+    'audit_log?select=action,metadata&action=in.(client.phone_handoff_created,client.login,client.login_failed)&order=id.desc&limit=30',
+  );
+  expect(audit.some((a) => a.action === 'client.phone_handoff_created')).toBe(true);
+  expect(
+    audit.some((a) => a.action === 'client.login' && a.metadata?.method === 'phone_handoff'),
+  ).toBe(true);
+  expect(
+    audit.some((a) => a.action === 'client.login_failed' && a.metadata?.reason === 'used'),
+  ).toBe(true);
+});
+
 test("a client cannot see or upload to another client's request", async () => {
   // The page: not found, not "forbidden", so it does not even confirm the request exists.
   await todd.goto(`/request/${ids.samDl}`);
@@ -665,8 +760,9 @@ test('no file bytes, sign-in codes or upload links are stored', async () => {
   const uploads = await adminRest<
     { size_bytes: number; sharepoint_item_id: string; status: string }[]
   >(`uploads?select=size_bytes,sharepoint_item_id,status&client_id=eq.${ids.todd}`);
-  // License photo, 3-page scan, 40 MB PDF and the in-browser camera photo.
-  expect(uploads.filter((u) => u.status === 'complete')).toHaveLength(4);
+  // License photo, 3-page scan, 40 MB PDF, the in-browser camera photo and the file sent
+  // from the phone.
+  expect(uploads.filter((u) => u.status === 'complete')).toHaveLength(5);
   expect(
     uploads.every((u) => u.status !== 'complete' || (u.sharepoint_item_id && u.size_bytes > 0)),
   ).toBe(true);

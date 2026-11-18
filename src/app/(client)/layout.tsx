@@ -4,13 +4,15 @@ import { ClientFooter, ClientHeader } from '@/components/client/brand';
 import { IdleLogout } from '@/components/client/idle-logout';
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  const ctx = await requireClient();
+  // A phone signed in from a "continue on your phone" code sees only its one item (the proxy
+  // keeps it there); it gets no navigation beyond Sign out.
+  const ctx = await requireClient({ allowPhone: true });
   return (
     <div className="min-h-dvh">
       <ClientHeader
         right={
           <div className="flex items-center gap-1">
-            {ctx.user.role === 'primary' ? (
+            {ctx.user.role === 'primary' && !ctx.phoneRequestId ? (
               <Link
                 href="/people"
                 prefetch={false}

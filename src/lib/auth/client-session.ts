@@ -9,9 +9,9 @@ import type { RequestMeta } from '@/lib/request-meta';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { decodeJwtPayload } from './oidc-claims';
 import {
-  CLIENT_ABSOLUTE_MS,
   CLIENT_SESSION_COOKIE,
   type ClientSessionLevel,
+  clientAbsoluteMs,
   issueClientSession,
   sessionCookieOptions,
 } from './session-policy';
@@ -39,11 +39,12 @@ export function setClientSessionCookie(
   res: NextResponse,
   authUserId: string,
   level: ClientSessionLevel,
+  requestId?: string,
 ): void {
   res.cookies.set(
     CLIENT_SESSION_COOKIE,
-    issueClientSession(appEnv().AUTH_SECRET, authUserId, level),
-    { ...sessionCookieOptions, maxAge: Math.floor(CLIENT_ABSOLUTE_MS / 1000) },
+    issueClientSession(appEnv().AUTH_SECRET, authUserId, level, Date.now(), requestId),
+    { ...sessionCookieOptions, maxAge: Math.floor(clientAbsoluteMs(level) / 1000) },
   );
 }
 
@@ -55,11 +56,15 @@ export function setClientSessionCookie(
 export async function completeFullSignIn(opts: {
   supabase: UserClient;
   user: SignInUser;
-  method: SignInMethod;
+  /** `phone_handoff`: a QR code from the person's own signed-in computer session. */
+  method: SignInMethod | 'phone_handoff';
   res: NextResponse;
   meta: RequestMeta;
+  /** A phone from a "continue on your phone" code: limited to this request, 30 minutes. */
+  phoneRequestId?: string;
 }): Promise<boolean> {
-  const { supabase, user, method, res, meta } = opts;
+  const { supabase, user, method, res, meta, phoneRequestId } = opts;
+  const level: ClientSessionLevel = phoneRequestId ? 'phone' : 'full';
   const { data } = await supabase.auth.getUser();
   if (!data.user || data.user.id !== user.auth_user_id) return false;
   const sessionId = await currentSessionId(supabase);
@@ -70,7 +75,8 @@ export async function completeFullSignIn(opts: {
     p_session_id: sessionId,
     p_auth_user_id: user.auth_user_id,
     p_method: method,
-    p_ttl_seconds: Math.floor(CLIENT_ABSOLUTE_MS / 1000),
+    // The database honors the session no longer than the portal cookie lasts.
+    p_ttl_seconds: Math.floor(clientAbsoluteMs(level) / 1000),
   });
   if (error) {
     log.error('client.session_approve_failed', { reason: error.code });
@@ -82,7 +88,8 @@ export async function completeFullSignIn(opts: {
     .from('client_users')
     .update({
       last_login_at: now,
-      last_login_method: method,
+      // A phone handoff keeps the method the person actually signed in with.
+      ...(method === 'phone_handoff' ? {} : { last_login_method: method }),
       ...(user.status === 'invited' ? { status: 'active' as const } : {}),
     })
     .eq('id', user.id);
@@ -101,7 +108,7 @@ export async function completeFullSignIn(opts: {
     metadata: { method },
     meta,
   });
-  setClientSessionCookie(res, user.auth_user_id, 'full');
+  setClientSessionCookie(res, user.auth_user_id, level, phoneRequestId);
   return true;
 }
 

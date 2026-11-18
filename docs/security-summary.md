@@ -68,6 +68,14 @@ location from phone pictures.
   security only honors sessions the portal approved after a full sign-in), so it cannot read
   any client record, request or upload. Recovery for someone who already set up a passkey or
   authenticator requires that factor first; if it is lost, Aleida resets their sign-in.
+- **Continue on your phone:** someone already fully signed in on a computer can show a QR code
+  on a request to finish it on their phone. The code is signed, made for that person and that
+  one request, works once and expires after 5 minutes; it travels in the link's fragment, so
+  it is never sent to or logged by any server. The phone's session reaches that one request
+  and its upload API only (other pages send it back there, other APIs refuse it, it cannot
+  make codes of its own) and ends after 30 minutes at most. Making and using codes is rate
+  limited and recorded in the audit log (`client.phone_handoff_created`, and `client.login`
+  with method `phone_handoff`).
 - **Data access:** each signed-in person can read only their own client's record, requests and
   uploads. This is enforced in the database itself (row level security) and covered by
   automated tests that prove a person cannot read another client's data. Nobody can change a

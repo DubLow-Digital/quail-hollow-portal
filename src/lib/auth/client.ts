@@ -14,6 +14,16 @@ export interface ClientContext {
   /** The approved user signed in (the owner, an office manager, a spouse...). */
   user: { id: string; first_name: string; last_name: string; email: string; role: ClientUserRole };
   supabase: Awaited<ReturnType<typeof createUserSupabase>>;
+  /**
+   * Set when this is a phone signed in from a "continue on your phone" code: the one request
+   * it may reach. Null for a full sign-in.
+   */
+  phoneRequestId: string | null;
+}
+
+export interface ClientOptions {
+  /** Also accept a phone session (one request only). Callers must then respect phoneRequestId. */
+  allowPhone?: boolean;
 }
 
 /**
@@ -22,13 +32,17 @@ export interface ClientContext {
  * current approved user of an active client. Data reads through `supabase` are limited by
  * RLS, which also requires the session to have been approved after a full sign-in.
  */
-export async function getClient(): Promise<ClientContext | null> {
+export async function getClient(options: ClientOptions = {}): Promise<ClientContext | null> {
   const cookieStore = await cookies();
   const check = checkClientSession(
     appEnv().AUTH_SECRET,
     cookieStore.get(CLIENT_SESSION_COOKIE)?.value,
   );
-  if (!check.ok || check.session.m !== 'full') return null;
+  if (!check.ok) return null;
+  const level = check.session.m;
+  if (level !== 'full' && !(level === 'phone' && options.allowPhone)) return null;
+  const phoneRequestId = level === 'phone' ? (check.session.rid ?? null) : null;
+  if (level === 'phone' && !phoneRequestId) return null;
 
   const supabase = await createUserSupabase();
   const { data, error } = await supabase.auth.getUser();
@@ -58,11 +72,17 @@ export async function getClient(): Promise<ClientContext | null> {
       email: client.email,
     },
     supabase,
+    phoneRequestId,
   };
 }
 
-export async function requireClient(): Promise<ClientContext> {
-  const ctx = await getClient();
+export async function requireClient(options: ClientOptions = {}): Promise<ClientContext> {
+  const ctx = await getClient(options);
   if (!ctx) redirect('/login');
   return ctx;
+}
+
+/** Whether this signed-in client may act on this request (a phone session: only its own). */
+export function mayUseRequest(ctx: ClientContext, requestId: string): boolean {
+  return ctx.phoneRequestId === null || ctx.phoneRequestId === requestId;
 }

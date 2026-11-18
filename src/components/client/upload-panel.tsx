@@ -69,6 +69,7 @@ export function UploadPanel({
   acceptedMime,
   maxMb,
   requiresFrontBack = false,
+  onPhone = false,
 }: {
   requestId: string;
   documentName: string;
@@ -76,6 +77,8 @@ export function UploadPanel({
   maxMb: number;
   /** The document type asks for both sides of a card. */
   requiresFrontBack?: boolean;
+  /** Signed in on a phone from a "continue on your phone" code (this item only). */
+  onPhone?: boolean;
 }) {
   const router = useRouter();
   const photoInput = useRef<HTMLInputElement>(null);
@@ -338,11 +341,17 @@ export function UploadPanel({
         <p className="text-xl font-semibold text-emerald-900">
           Thank you! We received your {documentName}.
         </p>
-        <p className="text-emerald-900/80">It is saved securely in your client file.</p>
+        <p className="text-emerald-900/80">
+          {onPhone
+            ? 'It is saved securely in your client file, and your computer shows it too. You can put your phone down.'
+            : 'It is saved securely in your client file.'}
+        </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Link href="/" className={buttonClass('primary', 'lg')}>
-            Back to my list
-          </Link>
+          {onPhone ? null : (
+            <Link href="/" className={buttonClass('primary', 'lg')}>
+              Back to my list
+            </Link>
+          )}
           <Button type="button" variant="secondary" size="lg" onClick={reset}>
             Send another file for this item
           </Button>

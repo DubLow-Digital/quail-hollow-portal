@@ -1,6 +1,6 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getClient } from '@/lib/auth/client';
+import { getClient, mayUseRequest } from '@/lib/auth/client';
 import { assertSameOrigin } from '@/lib/security/origin';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { metaFromHeaders } from '@/lib/request-meta';
@@ -34,7 +34,7 @@ function fail(status: number, error: string) {
  */
 export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return fail(403, 'forbidden');
-  const ctx = await getClient();
+  const ctx = await getClient({ allowPhone: true });
   if (!ctx) return fail(401, 'unauthorized');
   await ensureSharePointLocation();
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     .eq('id', input.uploadId)
     .eq('client_id', ctx.client.id)
     .maybeSingle();
-  if (!upload) return fail(404, 'not_found');
+  if (!upload || !mayUseRequest(ctx, upload.request_id)) return fail(404, 'not_found');
   if (upload.status === 'complete') return NextResponse.json({ ok: true });
   if (upload.status !== 'pending') return fail(409, 'upload_closed');
   if (Date.now() - Date.parse(upload.started_at) > MAX_AGE_MS) return fail(409, 'upload_expired');

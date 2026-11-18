@@ -5,10 +5,10 @@ import { graphMockOrigin } from '@/lib/graph/mock';
 import {
   ADMIN_ABSOLUTE_MS,
   ADMIN_SESSION_COOKIE,
-  CLIENT_ABSOLUTE_MS,
   CLIENT_SESSION_COOKIE,
   checkAdminSession,
   checkClientSession,
+  clientAbsoluteMs,
   remainingSeconds,
   sessionCookieOptions,
   touchAdminSession,
@@ -16,7 +16,13 @@ import {
   clearPortalCookie,
 } from '@/lib/auth/session-policy';
 import { SUPABASE_COOKIE_OPTIONS, isSupabaseAuthCookie } from '@/lib/supabase/cookie-options';
-import { SETUP_PATH, classifyPath, safeNextPath, setupAllowed } from '@/lib/auth/routes';
+import {
+  SETUP_PATH,
+  classifyPath,
+  phoneAllowed,
+  safeNextPath,
+  setupAllowed,
+} from '@/lib/auth/routes';
 import { log } from '@/lib/log';
 
 /**
@@ -126,7 +132,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Signed in with only an emailed code: the setup screen is the only way forward.
-  if (check.session.m !== 'full' && !setupAllowed(pathname)) {
+  if (check.session.m === 'setup' && !setupAllowed(pathname)) {
     log.warn('auth.session_denied', { route: 'client', reason: 'setup_required' });
     const res = isPageGet
       ? NextResponse.redirect(new URL(SETUP_PATH, request.url))
@@ -135,9 +141,20 @@ export async function proxy(request: NextRequest) {
     return withCsp(res, csp);
   }
 
+  // A phone signed in from a "continue on your phone" code: that one request only.
+  const phoneRequest = check.session.m === 'phone' ? check.session.rid : null;
+  if (phoneRequest && !phoneAllowed(pathname, phoneRequest)) {
+    log.warn('auth.session_denied', { route: 'client', reason: 'phone_session' });
+    const res = isPageGet
+      ? NextResponse.redirect(new URL(`/request/${phoneRequest}`, request.url))
+      : NextResponse.json({ error: 'phone_session' }, { status: 403 });
+    for (const c of response.cookies.getAll()) res.cookies.set(c);
+    return withCsp(res, csp);
+  }
+
   response.cookies.set(CLIENT_SESSION_COOKIE, touchClientSession(secret, check.session), {
     ...sessionCookieOptions,
-    maxAge: remainingSeconds(check.session.iat, CLIENT_ABSOLUTE_MS),
+    maxAge: remainingSeconds(check.session.iat, clientAbsoluteMs(check.session.m)),
   });
   return response;
 }

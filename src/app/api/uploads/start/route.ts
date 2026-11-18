@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getClient } from '@/lib/auth/client';
+import { getClient, mayUseRequest } from '@/lib/auth/client';
 import { assertSameOrigin } from '@/lib/security/origin';
 import { hitLimit, LIMITS } from '@/lib/security/rate-limit';
 import { serviceSupabase } from '@/lib/supabase/admin';
@@ -42,7 +42,8 @@ function fail(status: number, error: string) {
  */
 export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return fail(403, 'forbidden');
-  const ctx = await getClient();
+  // A phone from a "continue on your phone" code may upload, to its own request only.
+  const ctx = await getClient({ allowPhone: true });
   if (!ctx) return fail(401, 'unauthorized');
   await ensureSharePointLocation();
 
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return fail(400, 'invalid_request');
   }
+  if (!mayUseRequest(ctx, input.requestId)) return fail(403, 'forbidden');
 
   if (!(await hitLimit(LIMITS.uploadStartPerClient, ctx.client.id)))
     return fail(429, 'rate_limited');
