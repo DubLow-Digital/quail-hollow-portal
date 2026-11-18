@@ -168,3 +168,38 @@ export function inboundChanges(
   if (incoming.phone && incoming.phone !== (current.phone ?? '')) changes.phone = incoming.phone;
   return changes;
 }
+
+/**
+ * What the sync service sends when a Notion client becomes Active and is not in the portal
+ * yet (POST /api/sync/invite). The portal adds them, creates their folder, requests the
+ * starter documents and emails the invite. Fields come from the Notion client record.
+ */
+export const inviteRequestSchema = z.object({
+  client: z.object({
+    notion_page_id: z.string().max(40),
+    ghl_contact_id: z.string().max(64).nullish(),
+    email: z.string().max(254).nullish(),
+    first_name: z.string().max(100).nullish(),
+    last_name: z.string().max(100).nullish(),
+    phone: z.string().max(40).nullish(),
+    /** Notion "Client Type": Individual, Business, or Business + Owner Personal. */
+    client_type: z.string().max(60).nullish(),
+    /** The Notion record's title, which is the business name for business clients. */
+    company: z.string().max(200).nullish(),
+  }),
+});
+export type InviteRequest = z.infer<typeof inviteRequestSchema>;
+
+/** The portal's answer to POST /api/sync/invite. Enum values only; no personal data. */
+export interface InviteResponse {
+  ok: true;
+  result: 'invited' | 'already_invited' | 'needs_review' | 'archived';
+  portal_id?: string;
+  /** Why the portal could not add or invite the client (result needs_review). */
+  reason?: 'email' | 'name' | 'email_taken' | 'link_conflict';
+  folder?: 'created' | 'linked' | 'exists' | 'error' | 'not_configured';
+  requested?: number;
+  /** Business documents left out because the record has no business name. */
+  skipped_business?: number;
+  invite?: 'sent' | 'failed';
+}

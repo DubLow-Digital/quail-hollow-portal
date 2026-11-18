@@ -1,3 +1,4 @@
+import { createHmac, randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -511,6 +512,143 @@ test('Aleida removes the office manager, who is signed out and cannot sign in ag
   await setSsoIdentity('google', { email: OLIVIA.email, email_verified: true });
   await olivia.getByRole('link', { name: 'Continue with Google' }).click();
   await olivia.waitForURL(/\/login\?sso=no_match/);
+});
+
+test('a client whose first invoice went out is added, filed and invited automatically', async () => {
+  // What quail-hollow-sync sends when a Notion client becomes Active (signed like the real one).
+  const secret = process.env.E2E_SYNC_SECRET ?? '';
+  const call = async (body: unknown, key = secret) => {
+    const raw = JSON.stringify(body);
+    const ts = String(Math.floor(Date.now() / 1000));
+    const mac = createHmac('sha256', key)
+      .update(`v1:${ts}:POST:/api/sync/invite:${raw}`)
+      .digest('hex');
+    return admin.request.post('/api/sync/invite', {
+      headers: {
+        'content-type': 'application/json',
+        'x-qh-timestamp': ts,
+        'x-qh-signature': `v1=${mac}`,
+      },
+      data: raw,
+    });
+  };
+  const notion = randomBytes(16).toString('hex');
+  const NORA = { first: 'Nora', last: 'Notion', email: `nora.notion.${RUN}@example.com` };
+  const body = {
+    client: {
+      notion_page_id: notion,
+      email: NORA.email,
+      first_name: NORA.first,
+      last_name: NORA.last,
+      client_type: 'Business + Owner Personal',
+      company: 'Notion Test Farms LLC',
+    },
+  };
+
+  // Only the sync service can call it.
+  expect((await call(body, 'not-the-secret-'.repeat(3))).status()).toBe(401);
+
+  const first = await call(body);
+  expect(first.status()).toBe(200);
+  const r = (await first.json()) as Record<string, unknown>;
+  // No email service in this run, so the invite itself reports failed.
+  expect(r).toMatchObject({
+    ok: true,
+    result: 'invited',
+    folder: 'created',
+    skipped_business: 0,
+    invite: 'failed',
+  });
+  expect(r.requested).toEqual(expect.any(Number));
+  const id = r.portal_id as string;
+
+  const [client] = await adminRest<
+    {
+      status: string;
+      entity_types: string[];
+      notion_page_id: string;
+      sharepoint_folder_path: string;
+    }[]
+  >(`clients?select=status,entity_types,notion_page_id,sharepoint_folder_path&id=eq.${id}`);
+  expect(client).toMatchObject({
+    status: 'invited',
+    entity_types: ['individual', 'other'],
+    notion_page_id: notion.replace(/^(.{8})(.{4})(.{4})(.{4})/, '$1-$2-$3-$4-'),
+    sharepoint_folder_path: 'Notion, Nora',
+  });
+  expect(await adminRest(`client_users?select=role,email&client_id=eq.${id}`)).toEqual([
+    { role: 'primary', email: NORA.email },
+  ]);
+
+  // Both starter bundles: last tax year where a year is needed, the business name where
+  // documents are filed per business.
+  type Req = {
+    tax_year: number | null;
+    business_name: string | null;
+    document_types: { name: string; requires_year: boolean; target_subfolder: string };
+  };
+  const reqs = await adminRest<Req[]>(
+    `document_requests?select=tax_year,business_name,document_types(name,requires_year,target_subfolder)&client_id=eq.${id}`,
+  );
+  expect(reqs).toHaveLength(r.requested as number);
+  const names = reqs.map((q) => q.document_types.name);
+  expect(names).toEqual(expect.arrayContaining([DL, 'W-2', 'EIN Letter']));
+  const lastYear = Number(firmDate().slice(0, 4)) - 1;
+  for (const q of reqs) {
+    expect(q.tax_year).toBe(q.document_types.requires_year ? lastYear : null);
+    expect(q.business_name).toBe(
+      q.document_types.target_subfolder.includes('{business}') ? 'Notion Test Farms LLC' : null,
+    );
+  }
+
+  // Calling again adds nothing: same client, folder already linked, no new requests.
+  expect(await (await call(body)).json()).toMatchObject({
+    result: 'invited',
+    portal_id: id,
+    folder: 'linked',
+    requested: 0,
+  });
+  expect(await adminRest(`document_requests?select=id&client_id=eq.${id}`)).toHaveLength(
+    reqs.length,
+  );
+
+  // Aleida sees the client, the folder and the requests.
+  await admin.goto(`/admin/clients/${id}`);
+  await expect(admin.locator('p', { hasText: 'Linked to' })).toContainText('Notion, Nora');
+  await expect(admin.getByText(`${DL} (front and back)`).first()).toBeVisible();
+
+  // A record the portal cannot use is left for Aleida, and nothing is created.
+  const noEmail = randomBytes(16).toString('hex');
+  expect(
+    await (
+      await call({ client: { notion_page_id: noEmail, first_name: 'No', last_name: 'Email' } })
+    ).json(),
+  ).toEqual({ ok: true, result: 'needs_review', reason: 'email' });
+  // A client Aleida already added by hand (same email) is linked, not added twice, and is
+  // not invited again because they already sign in.
+  expect(
+    await (
+      await call({
+        client: {
+          notion_page_id: noEmail,
+          email: SAM.email,
+          first_name: SAM.first,
+          last_name: SAM.last,
+        },
+      })
+    ).json(),
+  ).toEqual({ ok: true, result: 'already_invited', portal_id: ids.sam });
+  const [sam] = await adminRest<{ notion_page_id: string }[]>(
+    `clients?select=notion_page_id&id=eq.${ids.sam}`,
+  );
+  expect(sam?.notion_page_id?.replace(/-/g, '')).toBe(noEmail);
+
+  const audit = await adminRest<{ action: string; metadata: Record<string, unknown> }[]>(
+    `audit_log?select=action,metadata&target_id=eq.${id}&order=id.asc`,
+  );
+  expect(audit.map((a) => a.action)).toEqual(
+    expect.arrayContaining(['client.created', 'client.folder_created', 'sync.auto_invited']),
+  );
 });
 
 test('no file bytes, sign-in codes or upload links are stored', async () => {

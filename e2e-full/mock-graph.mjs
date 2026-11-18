@@ -19,6 +19,8 @@
 //   GET    /oauth/{google|microsoft}/authorize   checks the request, redirects back with a code
 //   POST   /oauth/{google|microsoft}/token       checks code, secret and PKCE; returns an ID token
 //   POST   /__test/oauth-identity                who the next sign-in is: { provider, claims }
+//   POST   /api/portal/*                         the sync service (quail-hollow-sync): accepts
+//                                                 pushes, offers no import candidates
 import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 
@@ -203,6 +205,11 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     }
     if (path.startsWith('/oauth/')) return await oauth(req, res, url);
+    if (path.startsWith('/api/portal/') && req.method === 'POST') {
+      await readBody(req);
+      if (path === '/api/portal/candidates') return send(res, 200, { ok: true, candidates: [] });
+      return send(res, 200, { ok: true, notion: 'skipped', ghl: 'skipped' });
+    }
     if (path === '/__test/files') {
       const files = [...items.values()]
         .filter((i) => !i.folder)

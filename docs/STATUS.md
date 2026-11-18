@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: November 17, 2026. What changed and when is in [CHANGELOG.md](../CHANGELOG.md)._
+_Last updated: November 18, 2026. What changed and when is in [CHANGELOG.md](../CHANGELOG.md)._
 
 ## Where things stand
 
@@ -25,11 +25,16 @@ Added after the Phase 1 brief, at Todd's request (Nov 13): the Files page, Notio
 Alchemist sync through quail-hollow-sync, Connect SharePoint, the backup emailed-code admin
 sign-in, and the full end-to-end CI test. Details in the change log.
 
-Added Nov 17 (in review): **approved users and new client sign-in**. Each client can have
+Added Nov 17 (live): **approved users and new client sign-in**. Each client can have
 several people who sign in (owner, office manager, spouse); Aleida and the client's main
 contact manage them. Clients sign in with Google, Microsoft, a passkey, or a password plus an
 authenticator app; an emailed code is now only for first-time setup and recovery, and a code
 alone cannot read any client data. Setup steps: `docs/client-sign-in-setup.md`.
+
+Added Nov 18 (in review): **automatic invite on the first invoice**. When a client turns Active
+in Notion, quail-hollow-sync asks the portal to add them, create their folder, request the
+starter documents and email the invite (`docs/sync.md`, "Automatic invite"). Needs
+QuickBooks connected to the sync service, and the matching quail-hollow-sync change.
 
 ### Tests
 
@@ -41,7 +46,8 @@ alone cannot read any client data. Setup steps: `docs/client-sign-in-setup.md`.
   contact, unapproved and unverified emails refused, passkey setup and sign-in (virtual
   authenticator), code-only and password-only sessions read nothing, recovery, removal, a
   client sees only their own requests, license photo filed as `TTest_DriversLicense_<date>.jpg`, a 3-page
-  scan arrives as one PDF, a 40 MB upload, client isolation (page, API and direct database),
+  scan arrives as one PDF, a 40 MB upload, a signed automatic invite (client, folder, starter
+  documents, no duplicates), client isolation (page, API and direct database),
   accept, file browser, audit trail, Connect SharePoint, and no upload links or codes stored.
 - Lighthouse mobile, `/login` and `/admin/signin`: performance 99, accessibility 100.
 

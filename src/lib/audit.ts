@@ -47,6 +47,7 @@ export type AuditAction =
   | 'sync.push_failed'
   | 'sync.received'
   | 'sync.rejected'
+  | 'sync.auto_invited'
   | 'client.imported'
   | 'settings.sharepoint_connected'
   | 'client.setup_started'

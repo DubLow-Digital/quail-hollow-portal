@@ -1,17 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { syncConfigured, syncEnv } from '@/lib/env';
 import {
-  MAX_BODY_BYTES,
-  SIGNATURE_HEADER,
-  TIMESTAMP_HEADER,
   inboundChanges,
   inboundClientSchema,
   normalizeGhlId,
   normalizeNotionId,
-  verifyRequest,
 } from '@/lib/sync/protocol';
-import { hitLimits, LIMITS } from '@/lib/security/rate-limit';
-import { metaFromHeaders } from '@/lib/request-meta';
+import { readSignedSyncRequest } from '@/lib/sync/inbound';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { audit } from '@/lib/audit';
 import { log } from '@/lib/log';
@@ -32,47 +26,15 @@ const CHANGE_LABELS: Record<string, string> = {
 /**
  * Called by quail-hollow-sync when a linked Notion client or Lead Alchemist contact
  * changes. Signed with SYNC_HUB_SECRET. It only updates clients that already exist in the
- * portal (new portal clients are created by Aleida, by hand or through Import), it never
- * changes a client's sign-in email, and it never triggers a sync back (no loops).
+ * portal (new clients come from Aleida, by hand or through Import, or from
+ * /api/sync/invite when their first invoice goes out), it never changes a client's sign-in
+ * email, and it never triggers a sync back (no loops).
  */
 export async function POST(request: NextRequest) {
-  if (!syncConfigured()) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  const meta = metaFromHeaders(request.headers);
+  const signed = await readSignedSyncRequest(request, PATH);
+  if (!signed.ok) return signed.response;
+  const { json, meta } = signed;
 
-  const allowed = await hitLimits([[LIMITS.syncInboundPerIp, meta.ip ?? 'unknown']]);
-  if (!allowed) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-
-  const declared = Number(request.headers.get('content-length') ?? '0');
-  if (declared > MAX_BODY_BYTES) return NextResponse.json({ error: 'too_large' }, { status: 413 });
-  const raw = await request.text();
-  if (Buffer.byteLength(raw) > MAX_BODY_BYTES)
-    return NextResponse.json({ error: 'too_large' }, { status: 413 });
-
-  const check = verifyRequest(
-    syncEnv().SYNC_HUB_SECRET,
-    'POST',
-    PATH,
-    raw,
-    request.headers.get(TIMESTAMP_HEADER),
-    request.headers.get(SIGNATURE_HEADER),
-  );
-  if (!check.ok) {
-    await audit({
-      actorType: 'system',
-      actorId: null,
-      action: 'sync.rejected',
-      metadata: { reason: check.reason },
-      meta,
-    });
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  let json: unknown;
-  try {
-    json = JSON.parse(raw);
-  } catch {
-    return NextResponse.json({ error: 'bad_request' }, { status: 400 });
-  }
   const parsed = inboundClientSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   const { origin, client: incoming } = parsed.data;

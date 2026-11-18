@@ -12,6 +12,19 @@ effect (for example a typo in a comment) can carry the `no-changelog` label inst
 Operations entries record setup changes outside the code (Vercel settings, Supabase, Microsoft
 Entra) by name only, never their values.
 
+## 2026-11-18
+
+### Added
+
+- **Clients are invited automatically when their first invoice goes out.** When a client turns
+  Active in Notion and is not in the portal yet, the portal adds them (the Notion contact is
+  their main contact), creates their SharePoint folder, requests the starter documents for
+  their client type (last tax year; business documents under the business name) and emails one
+  invite that says how many documents are waiting. Aleida no longer has to import and invite
+  them by hand. Anything it cannot do safely (no email, an email already in use, a folder name
+  already taken) comes back to Aleida as a Notion task. It can be turned off in the sync
+  dashboard. ([#8](https://github.com/DubLow-Digital/quail-hollow-portal/pull/8))
+
 ## 2026-11-17
 
 ### Added
