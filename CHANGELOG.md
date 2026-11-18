@@ -16,6 +16,7 @@ Entra) by name only, never their values.
 
 ### Added
 
+- **Continue on your phone (in progress).** On a computer, a client will be able to show a QR code on a request page that opens the same request on their phone, already signed in. The code works once and expires after 5 minutes. ([#6](https://github.com/DubLow-Digital/quail-hollow-portal/pull/6))
 - **Clients can view the files they sent.** Each file under "You have sent" on a request has a View button that opens that one file straight from SharePoint, using a short-lived link SharePoint makes for that file. The portal checks the file belongs to the signed-in client first. No folder is shared, clients still never see SharePoint, and every view is recorded in the audit log. ([#5](https://github.com/DubLow-Digital/quail-hollow-portal/pull/5))
 - **Document outline and auto-crop.** In Take photo and Scan document a green outline follows the page edges on the live camera view; when the picture is taken, the page is cropped and straightened automatically. In Take photo the client can switch to the whole, uncropped photo. Works offline on the phone; nothing is sent anywhere until the client taps Send. ([#3](https://github.com/DubLow-Digital/quail-hollow-portal/pull/3))
 - **Approved users.** A client can now have several people who sign in for them, such as an
