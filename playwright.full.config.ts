@@ -19,6 +19,13 @@ const sso = {
   MS_CLIENT_SIGNIN_CLIENT_SECRET: 'e2e-microsoft-not-a-secret',
 };
 
+// The Notion / Lead Alchemist sync service is the same stand-in (fake, test-only secret).
+const sync = {
+  SYNC_HUB_URL: MOCK_URL,
+  SYNC_HUB_SECRET: 'e2e-sync-secret-not-real-0123456789abcdef',
+};
+process.env.E2E_SYNC_SECRET = sync.SYNC_HUB_SECRET;
+
 const graph = {
   MS_TENANT_ID: 'e2e-tenant',
   MS_PORTAL_CLIENT_ID: 'e2e-client',
@@ -70,6 +77,7 @@ export default defineConfig({
         E2E_GRAPH_MOCK_URL: MOCK_URL,
         ...sso,
         E2E_OAUTH_MOCK_URL: MOCK_URL,
+        ...sync,
         ADMIN_ALLOWLIST: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
         ADMIN_EMAIL_LOGIN: 'true',
       },
