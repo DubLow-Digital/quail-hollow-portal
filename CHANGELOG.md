@@ -23,7 +23,7 @@ Entra) by name only, never their values.
   invite that says how many documents are waiting. Aleida no longer has to import and invite
   them by hand. Anything it cannot do safely (no email, an email already in use, a folder name
   already taken) comes back to Aleida as a Notion task. It can be turned off in the sync
-  dashboard. ([#PR](https://github.com/DubLow-Digital/quail-hollow-portal/pull/PR))
+  dashboard. ([#8](https://github.com/DubLow-Digital/quail-hollow-portal/pull/8))
 
 ## 2026-11-17
 
