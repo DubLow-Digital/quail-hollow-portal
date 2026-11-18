@@ -53,6 +53,7 @@ export type AuditAction =
   | 'client.setup_started'
   | 'client.setup_completed'
   | 'client.mfa_failed'
+  | 'client.phone_handoff_created'
   | 'client_user.added'
   | 'client_user.removed'
   | 'client_user.invited'

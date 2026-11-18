@@ -16,6 +16,13 @@ Entra) by name only, never their values.
 
 ### Added
 
+- **Continue on your phone.** On a computer, each open item now offers "Use your phone
+  instead": it shows a QR code, and scanning it opens that item on the client's phone, already
+  signed in, so they can take the picture or scan the document there. The code works once and
+  expires after 5 minutes. The phone can send documents for that one item only, for 30 minutes
+  at most, and the computer shows "Received from your phone" when the file arrives.
+  ([#9](https://github.com/DubLow-Digital/quail-hollow-portal/pull/9))
+
 - **Clients are invited automatically when their first invoice goes out.** When a client turns
   Active in Notion and is not in the portal yet, the portal adds them (the Notion contact is
   their main contact), creates their SharePoint folder, requests the starter documents for

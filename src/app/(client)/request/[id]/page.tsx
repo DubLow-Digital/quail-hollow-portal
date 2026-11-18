@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { requireClient } from '@/lib/auth/client';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/actions';
@@ -8,6 +8,7 @@ import { Alert, Badge } from '@/components/ui';
 import { UploadPanel } from '@/components/client/upload-panel';
 import { OFFICE_PHONE, OFFICE_PHONE_HREF } from '@/components/client/brand';
 import { documentLabel } from '@/lib/requests/document-label';
+import { PhoneHandoff } from '@/components/client/phone-handoff';
 
 export const metadata = { title: 'Send a document' };
 
@@ -21,7 +22,10 @@ export default async function RequestPage({
   const { id } = await params;
   const { file: fileNotice } = await searchParams;
   if (!UUID_RE.test(id)) notFound();
-  const { client, supabase } = await requireClient();
+  const { client, supabase, phoneRequestId } = await requireClient({ allowPhone: true });
+  // A phone from a "continue on your phone" code may open its own item only.
+  if (phoneRequestId && phoneRequestId !== id) redirect(`/request/${phoneRequestId}`);
+  const onPhone = Boolean(phoneRequestId);
 
   // Row level security returns nothing if this request belongs to someone else.
   const { data: req } = await supabase
@@ -49,12 +53,18 @@ export default async function RequestPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/"
-        className="inline-flex min-h-11 items-center text-sm font-medium text-brand-700"
-      >
-        ← Back to my list
-      </Link>
+      {onPhone ? (
+        <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900">
+          You are signed in on this phone to send this item only.
+        </p>
+      ) : (
+        <Link
+          href="/"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-brand-700"
+        >
+          ← Back to my list
+        </Link>
+      )}
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
           <h1 className="font-serif text-2xl font-semibold text-brand-900">{title}</h1>
@@ -99,13 +109,17 @@ export default async function RequestPage({
           .
         </Alert>
       ) : (
-        <UploadPanel
-          requestId={req.id}
-          documentName={type.name}
-          acceptedMime={type.accepted_mime}
-          maxMb={type.max_mb}
-          requiresFrontBack={type.requires_front_back}
-        />
+        <>
+          <UploadPanel
+            requestId={req.id}
+            documentName={type.name}
+            acceptedMime={type.accepted_mime}
+            maxMb={type.max_mb}
+            requiresFrontBack={type.requires_front_back}
+            onPhone={onPhone}
+          />
+          {onPhone ? null : <PhoneHandoff requestId={req.id} sentCount={sent.length} />}
+        </>
       )}
 
       {fileNotice === 'unavailable' ? (
@@ -136,15 +150,17 @@ export default async function RequestPage({
                   <span className="block truncate">{u.final_filename}</span>
                   <span className="block text-neutral-500">{formatDateTime(u.uploaded_at)}</span>
                 </span>
-                <a
-                  href={`/api/uploads/${u.id}/view`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 font-medium text-brand-700 underline"
-                  aria-label={`View ${u.final_filename}`}
-                >
-                  View
-                </a>
+                {onPhone ? null : (
+                  <a
+                    href={`/api/uploads/${u.id}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 font-medium text-brand-700 underline"
+                    aria-label={`View ${u.final_filename}`}
+                  >
+                    View
+                  </a>
+                )}
               </li>
             ))}
           </ul>

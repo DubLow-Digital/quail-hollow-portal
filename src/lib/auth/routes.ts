@@ -16,6 +16,8 @@ export function classifyPath(pathname: string): RouteArea {
   if (pathname === '/account' || pathname.startsWith('/account/')) return 'client';
   if (pathname === '/people' || pathname.startsWith('/people/')) return 'client';
   if (pathname.startsWith('/api/auth/client/setup/')) return 'client';
+  // Making a "continue on your phone" code needs a session; using one (redeem) does not.
+  if (pathname === '/api/auth/client/handoff') return 'client';
 
   return 'public';
 }
@@ -28,6 +30,20 @@ export function classifyPath(pathname: string): RouteArea {
 export const SETUP_PATH = '/account/setup';
 export function setupAllowed(pathname: string): boolean {
   return pathname === SETUP_PATH || pathname.startsWith('/api/auth/client/setup/');
+}
+
+/**
+ * Where a `phone` session (signed in from a "continue on your phone" code) may go: the one
+ * request it was made for, and the upload API. Everything else sends it back to that request.
+ */
+export const PHONE_UPLOAD_APIS = [
+  '/api/uploads/start',
+  '/api/uploads/complete',
+  '/api/uploads/fail',
+  '/api/uploads/heartbeat',
+];
+export function phoneAllowed(pathname: string, requestId: string): boolean {
+  return pathname === `/request/${requestId}` || PHONE_UPLOAD_APIS.includes(pathname);
 }
 
 /**

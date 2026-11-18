@@ -13,6 +13,8 @@ import { signValue, verifyValue } from '@/lib/security/signed-cookie';
 
 export const CLIENT_IDLE_MS = 30 * 60 * 1000;
 export const CLIENT_ABSOLUTE_MS = 12 * 60 * 60 * 1000;
+/** A phone signed in from a "continue on your phone" code: one request, 30 minutes at most. */
+export const PHONE_SESSION_MS = 30 * 60 * 1000;
 export const ADMIN_IDLE_MS = 60 * 60 * 1000;
 export const ADMIN_ABSOLUTE_MS = 12 * 60 * 60 * 1000;
 
@@ -48,17 +50,23 @@ export function clearPortalCookie(
  * `full`: signed in with Google, Microsoft, a passkey, or a password plus an authenticator
  * code. `setup`: signed in with only an emailed code (first-time setup or recovery); such a
  * session can only reach the setup screen and its API, and its database token reads nothing.
- * Cookies issued before levels existed count as `setup`.
+ * `phone`: a phone signed in by scanning the "continue on your phone" code from the same
+ * person's full session on a computer; it reaches one request (`rid`) and its uploads only,
+ * for PHONE_SESSION_MS at most. Cookies issued before levels existed count as `setup`.
  */
-export type ClientSessionLevel = 'full' | 'setup';
+export type ClientSessionLevel = 'full' | 'setup' | 'phone';
 
-const clientSessionSchema = z.object({
-  v: z.literal(1),
-  uid: z.uuid(),
-  m: z.enum(['full', 'setup']).default('setup'),
-  iat: z.number().int(),
-  lat: z.number().int(),
-});
+const clientSessionSchema = z
+  .object({
+    v: z.literal(1),
+    uid: z.uuid(),
+    m: z.enum(['full', 'setup', 'phone']).default('setup'),
+    /** The one request a `phone` session may reach. */
+    rid: z.uuid().optional(),
+    iat: z.number().int(),
+    lat: z.number().int(),
+  })
+  .refine((s) => (s.m === 'phone') === Boolean(s.rid), { message: 'rid belongs to phone only' });
 
 const adminSessionSchema = z.object({
   v: z.literal(1),
@@ -96,9 +104,24 @@ export function issueClientSession(
   uid: string,
   level: ClientSessionLevel,
   now = Date.now(),
+  requestId?: string,
 ): string {
-  const payload: ClientSession = { v: 1, uid, m: level, iat: now, lat: now };
+  if ((level === 'phone') !== Boolean(requestId))
+    throw new Error('A phone session needs exactly one request');
+  const payload: ClientSession = {
+    v: 1,
+    uid,
+    m: level,
+    ...(requestId ? { rid: requestId } : {}),
+    iat: now,
+    lat: now,
+  };
   return signValue(secret, CLIENT_SESSION_COOKIE, payload);
+}
+
+/** How long a client session of this level may last in total. */
+export function clientAbsoluteMs(level: ClientSessionLevel): number {
+  return level === 'phone' ? PHONE_SESSION_MS : CLIENT_ABSOLUTE_MS;
 }
 
 export function checkClientSession(
@@ -108,12 +131,13 @@ export function checkClientSession(
 ): SessionCheck<ClientSession> {
   const raw = verifyValue(secret, CLIENT_SESSION_COOKIE, value);
   const parsed = clientSessionSchema.safeParse(raw);
+  const session = parsed.success ? parsed.data : null;
   return evaluate(
-    parsed.success ? parsed.data : null,
+    session,
     Boolean(value),
     now,
     CLIENT_IDLE_MS,
-    CLIENT_ABSOLUTE_MS,
+    clientAbsoluteMs(session?.m ?? 'full'),
   );
 }
 

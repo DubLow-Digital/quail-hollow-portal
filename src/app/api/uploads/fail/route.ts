@@ -14,20 +14,21 @@ const bodySchema = z.object({
 /** The browser reports an upload it could not finish, so it does not stay "in progress". */
 export async function POST(request: NextRequest) {
   if (!assertSameOrigin(request)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  const ctx = await getClient();
+  const ctx = await getClient({ allowPhone: true });
   if (!ctx) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
 
-  const { data } = await serviceSupabase()
+  let query = serviceSupabase()
     .from('uploads')
     .update({ status: 'failed', failure_reason: `client_${parsed.data.reason}` })
     .eq('id', parsed.data.uploadId)
     .eq('client_id', ctx.client.id)
-    .eq('status', 'pending')
-    .select('id, request_id')
-    .maybeSingle();
+    .eq('status', 'pending');
+  // A phone session may only touch uploads for its own request.
+  if (ctx.phoneRequestId) query = query.eq('request_id', ctx.phoneRequestId);
+  const { data } = await query.select('id, request_id').maybeSingle();
 
   if (data) {
     await audit({

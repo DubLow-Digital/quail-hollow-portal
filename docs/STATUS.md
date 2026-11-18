@@ -31,10 +31,14 @@ contact manage them. Clients sign in with Google, Microsoft, a passkey, or a pas
 authenticator app; an emailed code is now only for first-time setup and recovery, and a code
 alone cannot read any client data. Setup steps: `docs/client-sign-in-setup.md`.
 
-Added Nov 18 (in review): **automatic invite on the first invoice**. When a client turns Active
+Added Nov 18 (live): **automatic invite on the first invoice**. When a client turns Active
 in Notion, quail-hollow-sync asks the portal to add them, create their folder, request the
 starter documents and email the invite (`docs/sync.md`, "Automatic invite"). Needs
 QuickBooks connected to the sync service, and the matching quail-hollow-sync change.
+
+Added Nov 18 (in review): **continue on your phone**. A client signed in on a computer can show
+a QR code on an open item; the phone opens that item, signed in for that item only (30 minutes
+at most), and the computer shows when the file arrives (`docs/security-summary.md`).
 
 ### Tests
 

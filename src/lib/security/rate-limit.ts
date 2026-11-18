@@ -35,6 +35,11 @@ export const LIMITS = {
   mfaVerifyPerIp: { bucket: 'mfa_verify_ip', max: 30, windowSeconds: 15 * 60 },
   passkeyPerIp: { bucket: 'passkey_ip', max: 30, windowSeconds: 15 * 60 },
   setupPerUser: { bucket: 'setup_user', max: 30, windowSeconds: 15 * 60 },
+  handoffCreatePerUser: { bucket: 'handoff_create_user', max: 10, windowSeconds: 15 * 60 },
+  handoffRedeemPerIp: { bucket: 'handoff_redeem_ip', max: 30, windowSeconds: 15 * 60 },
+  // One-time use of a "continue on your phone" code: keyed by the code's nonce, allowed once
+  // within a window longer than the code's lifetime.
+  handoffUse: { bucket: 'handoff_use', max: 1, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, Limit>;
 
 export async function hitLimit(limit: Limit, identifier: string): Promise<boolean> {
