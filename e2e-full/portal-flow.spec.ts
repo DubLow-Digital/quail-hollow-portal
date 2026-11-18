@@ -485,7 +485,10 @@ test('the main contact adds an office manager, who signs in with Google and sees
   const logins = await adminRest<{ metadata: { method?: string } }[]>(
     `audit_log?select=metadata&action=eq.client.login&target_id=eq.${ids.todd}`,
   );
-  expect(new Set(logins.map((r) => r.metadata.method))).toEqual(new Set(['password', 'google']));
+  // Todd: password and authenticator, then the QR code on his phone; Olivia: Google.
+  expect(new Set(logins.map((r) => r.metadata.method))).toEqual(
+    new Set(['password', 'phone_handoff', 'google']),
+  );
 });
 
 test('Google or Microsoft sign-in is refused for an email that is not approved or not verified', async ({
