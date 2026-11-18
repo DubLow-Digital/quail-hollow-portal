@@ -68,11 +68,14 @@ export function UploadPanel({
   documentName,
   acceptedMime,
   maxMb,
+  requiresFrontBack = false,
 }: {
   requestId: string;
   documentName: string;
   acceptedMime: string[];
   maxMb: number;
+  /** The document type asks for both sides of a card. */
+  requiresFrontBack?: boolean;
 }) {
   const router = useRouter();
   const photoInput = useRef<HTMLInputElement>(null);
@@ -408,6 +411,48 @@ export function UploadPanel({
     );
   }
 
+  // For a card that needs both sides, Scan document (front, then back, as one PDF) comes first.
+  const scanFirst = requiresFrontBack && acceptsPdf;
+  const primary =
+    'flex min-h-20 w-full items-center gap-4 rounded-2xl bg-brand-700 px-5 text-left text-white shadow-sm active:scale-[0.99]';
+  const secondary =
+    'flex min-h-20 w-full items-center gap-4 rounded-2xl bg-white px-5 text-left text-brand-900 shadow-sm ring-1 ring-brand-200 active:scale-[0.99]';
+  const photoButton =
+    acceptsImages || acceptsPdf ? (
+      <button
+        type="button"
+        onClick={() => setCamera('photo')}
+        className={scanFirst ? secondary : primary}
+      >
+        <span aria-hidden="true" className="text-3xl">
+          📷
+        </span>
+        <span>
+          <span className="block text-lg font-semibold">Take photo</span>
+          <span className={`block text-sm ${scanFirst ? 'text-neutral-600' : 'text-white/80'}`}>
+            {scanFirst ? 'One side only' : 'Best for a single card or page'}
+          </span>
+        </span>
+      </button>
+    ) : null;
+  const scanButton = acceptsPdf ? (
+    <button
+      type="button"
+      onClick={() => setCamera('scan')}
+      className={scanFirst ? primary : secondary}
+    >
+      <span aria-hidden="true" className="text-3xl">
+        📑
+      </span>
+      <span>
+        <span className="block text-lg font-semibold">Scan document</span>
+        <span className={`block text-sm ${scanFirst ? 'text-white/80' : 'text-neutral-600'}`}>
+          {requiresFrontBack ? 'The front, then the back, as one PDF' : 'Several pages as one PDF'}
+        </span>
+      </span>
+    </button>
+  ) : null;
+
   return (
     <div className="space-y-3">
       {phase === 'error' && error ? (
@@ -421,39 +466,9 @@ export function UploadPanel({
         </Alert>
       ) : null}
 
-      {acceptsImages || acceptsPdf ? (
-        <button
-          type="button"
-          onClick={() => setCamera('photo')}
-          className="flex min-h-20 w-full items-center gap-4 rounded-2xl bg-brand-700 px-5 text-left text-white shadow-sm active:scale-[0.99]"
-        >
-          <span aria-hidden="true" className="text-3xl">
-            📷
-          </span>
-          <span>
-            <span className="block text-lg font-semibold">Take photo</span>
-            <span className="block text-sm text-white/80">Best for a single card or page</span>
-          </span>
-        </button>
-      ) : null}
-
-      {acceptsPdf ? (
-        <button
-          type="button"
-          onClick={() => setCamera('scan')}
-          className="flex min-h-20 w-full items-center gap-4 rounded-2xl bg-white px-5 text-left text-brand-900 shadow-sm ring-1 ring-brand-200 active:scale-[0.99]"
-        >
-          <span aria-hidden="true" className="text-3xl">
-            📑
-          </span>
-          <span>
-            <span className="block text-lg font-semibold">Scan document</span>
-            <span className="block text-sm text-neutral-600">
-              Several pages, or front and back, as one PDF
-            </span>
-          </span>
-        </button>
-      ) : null}
+      {scanFirst ? scanButton : null}
+      {photoButton}
+      {scanFirst ? null : scanButton}
 
       <button
         type="button"
@@ -491,6 +506,7 @@ export function UploadPanel({
       {camera === 'scan' ? (
         <Scanner
           mode="scan"
+          frontBack={requiresFrontBack}
           onDone={(pages) => void onScanned(pages)}
           onCancel={() => setCamera(null)}
         />

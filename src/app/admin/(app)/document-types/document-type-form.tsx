@@ -18,6 +18,7 @@ export interface DocumentTypeValues {
   accepted_mime?: string[];
   max_mb?: number;
   requires_year?: boolean;
+  requires_front_back?: boolean;
   active?: boolean;
   sort_order?: number;
 }
@@ -178,6 +179,15 @@ export function DocumentTypeForm({
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
+            name="requires_front_back"
+            defaultChecked={values.requires_front_back ?? false}
+            className="size-4 accent-brand-700"
+          />
+          Needs front and back
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
             name="active"
             defaultChecked={values.active ?? true}
             className="size-4 accent-brand-700"
@@ -185,6 +195,11 @@ export function DocumentTypeForm({
           Active (available for new requests)
         </label>
       </div>
+      <p className="text-xs text-neutral-500">
+        Needs front and back: clients see &ldquo;(front and back)&rdquo; after the name, are asked
+        for both sides, and Scan document asks for the front, then the back. When it is off, front
+        and back are not mentioned.
+      </p>
       <ActionMessage state={state} />
       <SubmitButton pendingLabel="Saving…">Save document type</SubmitButton>
     </form>

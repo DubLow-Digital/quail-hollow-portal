@@ -35,12 +35,15 @@ export function Scanner({
   onDone,
   onCancel,
   onFallback,
+  frontBack = false,
 }: {
   mode?: CameraMode;
   onDone: (pages: ScannedPage[]) => void;
   onCancel: () => void;
   /** Photo mode only: use the phone's own camera app instead (must run in the click). */
   onFallback?: () => void;
+  /** Scan mode only: the document needs both sides, so ask for the front, then the back. */
+  frontBack?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -54,6 +57,10 @@ export function Scanner({
   const [review, setReview] = useState<(Captured & { url: string; useFull: boolean }) | null>(null);
   const isPhoto = mode === 'photo';
   const label = isPhoto ? 'Take photo' : 'Scan document';
+  const sides = frontBack && !isPhoto;
+  /** "Front" and "Back" for the first two captures of a two-sided card, else page numbers. */
+  const pageName = (i: number) => (sides && i < 2 ? (i === 0 ? 'Front' : 'Back') : `Page ${i + 1}`);
+  const nextSide = sides && pages.length < 2 ? (pages.length === 0 ? 'front' : 'back') : null;
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -269,7 +276,11 @@ export function Scanner({
         ) : (
           <>
             <p className="text-sm text-white/80" aria-live="polite">
-              {pages.length} page{pages.length === 1 ? '' : 's'}
+              {nextSide
+                ? nextSide === 'front'
+                  ? 'Capture the front'
+                  : 'Now capture the back'
+                : `${pages.length} page${pages.length === 1 ? '' : 's'}`}
             </p>
             <button
               type="button"
@@ -363,7 +374,11 @@ export function Scanner({
               onClick={() => fallbackInput.current?.click()}
               disabled={busy}
             >
-              {pages.length ? 'Take another page' : 'Take a photo of page 1'}
+              {nextSide
+                ? `Take a photo of the ${nextSide}`
+                : pages.length
+                  ? 'Take another page'
+                  : 'Take a photo of page 1'}
             </Button>
           </div>
         )}
@@ -386,19 +401,19 @@ export function Scanner({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={p.url}
-                alt={`Page ${i + 1}`}
+                alt={pageName(i)}
                 className="h-20 w-16 rounded-md object-cover ring-1 ring-white/30"
               />
               <button
                 type="button"
                 onClick={() => removePage(i)}
-                aria-label={`Remove page ${i + 1}`}
+                aria-label={`Remove ${pageName(i).toLowerCase()}`}
                 className="absolute -top-2 -right-2 flex size-7 items-center justify-center rounded-full bg-red-600 text-sm font-bold"
               >
                 ×
               </button>
               <span className="absolute bottom-0.5 left-1 text-xs font-semibold drop-shadow">
-                {i + 1}
+                {sides && i < 2 ? pageName(i) : i + 1}
               </span>
             </li>
           ))}
@@ -437,7 +452,13 @@ export function Scanner({
                 type="button"
                 onClick={() => void capture()}
                 disabled={busy || (!isPhoto && pages.length >= MAX_PAGES)}
-                aria-label={isPhoto ? 'Take picture' : `Capture page ${pages.length + 1}`}
+                aria-label={
+                  isPhoto
+                    ? 'Take picture'
+                    : nextSide
+                      ? `Capture the ${nextSide}`
+                      : `Capture page ${pages.length + 1}`
+                }
                 className={`size-20 rounded-full border-4 bg-white/20 active:bg-white/60 disabled:opacity-40 ${quad ? 'border-emerald-400' : 'border-white'}`}
               />
             ) : !isPhoto && cameraState === 'unavailable' && pages.length ? (
@@ -447,7 +468,9 @@ export function Scanner({
           <p className="px-4 pb-4 text-center text-xs text-white/70">
             {isPhoto
               ? 'Lay it flat on a darker surface in good light. When the green outline matches the edges, take the picture.'
-              : 'Lay each page flat on a darker surface in good light. When the green outline matches the edges, capture the page, then tap Done.'}
+              : sides
+                ? 'Lay it flat on a darker surface in good light. Capture the front, turn it over and capture the back, then tap Done.'
+                : 'Lay each page flat on a darker surface in good light. When the green outline matches the edges, capture the page, then tap Done.'}
           </p>
         </>
       )}

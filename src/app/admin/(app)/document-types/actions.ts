@@ -51,6 +51,7 @@ const schema = z.object({
     .min(1, 'Choose at least one file type.'),
   max_mb: z.coerce.number().int().min(1).max(250),
   requires_year: z.boolean(),
+  requires_front_back: z.boolean(),
   active: z.boolean(),
   sort_order: z.coerce.number().int().min(0).max(10000),
 });
@@ -65,6 +66,7 @@ function read(form: FormData) {
     accepted_mime: strs(form, 'accepted_mime'),
     max_mb: str(form, 'max_mb'),
     requires_year: form.get('requires_year') === 'on',
+    requires_front_back: form.get('requires_front_back') === 'on',
     active: form.get('active') === 'on',
     sort_order: str(form, 'sort_order') || '100',
   });

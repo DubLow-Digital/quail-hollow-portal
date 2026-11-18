@@ -3,6 +3,7 @@ import { requireClient } from '@/lib/auth/client';
 import { REQUEST_STATUS, formatDate } from '@/lib/status';
 import { firmDateStamp } from '@/lib/naming/filename';
 import { Alert, Badge, EmptyState, cx } from '@/components/ui';
+import { documentLabel } from '@/lib/requests/document-label';
 
 export const metadata = { title: 'Your documents' };
 
@@ -18,7 +19,7 @@ export default async function ChecklistPage({
   const { data: requests, error } = await supabase
     .from('document_requests')
     .select(
-      'id, status, tax_year, business_name, note_to_client, redo_note, due_date, requested_at, status_changed_at, document_types(name, sort_order)',
+      'id, status, tax_year, business_name, note_to_client, redo_note, due_date, requested_at, status_changed_at, document_types(name, sort_order, requires_front_back)',
     );
 
   const today = firmDateStamp(new Date());
@@ -80,7 +81,7 @@ export default async function ChecklistPage({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-medium text-brand-900">
-                          {r.document_types?.name ?? 'Document'}
+                          {documentLabel(r.document_types)}
                           {r.tax_year ? ` (${r.tax_year})` : ''}
                         </p>
                         {r.business_name ? (
@@ -135,7 +136,7 @@ export default async function ChecklistPage({
                       ✓
                     </span>
                     <span>
-                      {r.document_types?.name ?? 'Document'}
+                      {documentLabel(r.document_types)}
                       {r.tax_year ? ` (${r.tax_year})` : ''}
                     </span>
                   </span>

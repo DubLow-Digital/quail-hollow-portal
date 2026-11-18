@@ -41,7 +41,7 @@ const SAM = { first: 'Sam', last: 'Sample', email: `sam.sample.${RUN}@example.co
 const OLIVIA = { first: 'Olivia', last: 'Office', email: `olivia.office.${RUN}@example.com` };
 const TODD_PASSWORD = `blue heron porch light ${RUN}`;
 const WORK_TENANT = '11111111-2222-4333-8444-555555555555';
-const DL = "Driver's License (front and back)";
+const DL = "Driver's License";
 const BANK = 'Bank Statement';
 
 let admin: Page;
