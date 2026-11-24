@@ -28,7 +28,7 @@ export class HubError extends Error {
   }
 }
 
-async function hubPost<T>(path: string, payload: unknown, schema: z.ZodType<T>): Promise<T> {
+export async function hubPost<T>(path: string, payload: unknown, schema: z.ZodType<T>): Promise<T> {
   const env = syncEnv();
   const body = JSON.stringify(payload);
   const { timestamp, signature } = signRequest(env.SYNC_HUB_SECRET, 'POST', path, body);

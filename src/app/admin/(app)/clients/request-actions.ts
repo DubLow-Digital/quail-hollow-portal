@@ -1,5 +1,6 @@
 'use server';
 
+import { notifyIntakeCompleteIfDone } from '@/lib/sync/intake-complete';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/admin';
@@ -275,8 +276,16 @@ export async function acceptRequestAction(
     metadata: { client_id: request.client_id },
     meta: await requestMeta(),
   });
+  // Every request accepted: Portal Intake Complete in Notion and Lead Alchemist (sent once).
+  const intake = await notifyIntakeCompleteIfDone(request.client_id);
   revalidatePath(`/admin/clients/${request.client_id}`);
-  return { ok: true, message: 'Accepted.' };
+  return {
+    ok: true,
+    message:
+      intake === 'sent'
+        ? 'Accepted. Every requested document is in: intake complete was sent to Notion.'
+        : 'Accepted.',
+  };
 }
 
 const redoSchema = z.object({
