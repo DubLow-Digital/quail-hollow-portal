@@ -20,7 +20,7 @@ Entra) by name only, never their values.
   client, the portal tells the sync once that the client's intake is complete. Notion moves the
   client to Portal Intake Complete with Client Portal Active, ticks "Collect the starter
   documents" and moves the Lead Alchemist opportunity. Only the Notion record's ID is sent. The
-  Accept message says when this happened. ([#10](https://github.com/DubLow-Digital/quail-hollow-portal/pull/10))
+  Accept message says when this happened. ([#10](https://github.com/DubLow-Digital/quail-hollow-portal/pull/7))
 
 ## 2026-11-18
 
