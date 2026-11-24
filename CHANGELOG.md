@@ -12,6 +12,16 @@ effect (for example a typo in a comment) can carry the `no-changelog` label inst
 Operations entries record setup changes outside the code (Vercel settings, Supabase, Microsoft
 Entra) by name only, never their values.
 
+## 2026-11-24
+
+### Added
+
+- **Intake complete goes to Notion.** When Aleida accepts the last open document request for a
+  client, the portal tells the sync once that the client's intake is complete. Notion moves the
+  client to Portal Intake Complete with Client Portal Active, ticks "Collect the starter
+  documents" and moves the Lead Alchemist opportunity. Only the Notion record's ID is sent. The
+  Accept message says when this happened. ([#10](https://github.com/DubLow-Digital/quail-hollow-portal/pull/7))
+
 ## 2026-11-18
 
 ### Added
